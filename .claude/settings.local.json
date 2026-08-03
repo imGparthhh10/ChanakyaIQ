@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:/Users/Parth.ghongane/Downloads/\" | grep -i \"atlas\\\\|living\")",
+      "Bash(where npx *)",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Bash(where node *)",
+      "Bash(where py *)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command py -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH -split ';' | Where-Object { $_ -match 'node|python|npm' })",
+      "Read(//c/Users/Parth.ghongane/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/21698f5c-5640-407c-a952-a15aa2d3c122/2fcd079c-dcb4-4718-aa3f-c11ace465bfa/skills/xlsx/**)",
+      "Bash(python -c ' *)",
+      "Read(//c/Users/Parth.ghongane/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/21698f5c-5640-407c-a952-a15aa2d3c122/2fcd079c-dcb4-4718-aa3f-c11ace465bfa/skills/xlsx/scripts/**)",
+      "Read(//usr/**)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Bash(/c/Users/Parth.ghongane/AppData/Local/Microsoft/WindowsApps/python3 --version)",
+      "Bash(markitdown --version)",
+      "Bash(cp \"C:/Users/Parth.ghongane/Downloads/ESDS_BFSI_MASTER_ALL_CATEGORIES_v3.xlsx\" \"C:/Users/Parth.ghongane/OneDrive - ESDS Software Solution Limited/Desktop/ESDS Dashbord/data/ESDS_BFSI_MASTER_ALL_CATEGORIES_v3.xlsx\")",
+      "Bash(cp \"C:/Users/Parth.ghongane/Downloads/BFSI_Master_Database.xlsx\" \"C:/Users/Parth.ghongane/OneDrive - ESDS Software Solution Limited/Desktop/ESDS Dashbord/data/BFSI_Master_Database.xlsx\")",
+      "Bash(where php *)",
+      "PowerShell(Start-Sleep -Seconds 3; try { $r = Invoke-WebRequest 'http://localhost:8080/' -UseBasicParsing -TimeoutSec 8; Write-Host \\('HTTP ' + $r.StatusCode + ' — body length ' + $r.Content.Length\\) } catch { Write-Host \\('FAIL: ' + $_.Exception.Message\\) })",
+      "PowerShell(Start-Sleep -Seconds 4; try { $r = Invoke-WebRequest 'http://localhost:8080/index.html' -UseBasicParsing -TimeoutSec 8; Write-Host \\('HTTP ' + $r.StatusCode + ' — length ' + $r.Content.Length + ' bytes'\\) } catch { Write-Host \\('FAIL: ' + $_.Exception.Message\\) })",
+      "PowerShell(cd 'C:\\\\Users\\\\Parth.ghongane\\\\OneDrive - ESDS Software Solution Limited\\\\Desktop\\\\ESDS Dashbord'; powershell -NoProfile -ExecutionPolicy Bypass -File .\\\\serve.ps1)",
+      "PowerShell($web = Invoke-WebRequest 'http://localhost:8080/assets/js/charts/charts.js' -UseBasicParsing; \\($web.Content -split \"`n\"\\)[200..205] -join \"`n\")",
+      "PowerShell(Start-Sleep -Seconds 2; $conn = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue; if \\($conn\\) { $conn | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; Write-Host \\('State=' + $_.State + ' PID=' + $_.OwningProcess + ' Name=' + $p.Name\\) } } else { Write-Host 'Port 8080 fully released' -ForegroundColor Green })",
+      "PowerShell(Get-Process powershell,pwsh -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Id 5424 -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; $conn = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { Write-Host \\('Still listening — PID ' + $conn.OwningProcess\\) -ForegroundColor Yellow } else { Write-Host 'Port 8080 released' -ForegroundColor Green })",
+      "PowerShell(try { $r = Invoke-WebRequest 'http://localhost:8080/index.html' -UseBasicParsing -TimeoutSec 4; Write-Host \\('Server OK — HTTP ' + $r.StatusCode\\) -ForegroundColor Green } catch { Write-Host \\('Not running: ' + $_.Exception.Message\\) -ForegroundColor Yellow })"
+    ]
+  }
+}

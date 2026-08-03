@@ -1,0 +1,68 @@
+/* ══════════════════════════════════════════════════════════════
+   Layout — App shell, sidebar, navbar, main grid, footer.
+   ══════════════════════════════════════════════════════════════ */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns var(--t-med) var(--ease-smooth);
+}
+.app-shell[data-sidebar="collapsed"] {
+  grid-template-columns: var(--sidebar-w-collapsed) 1fr;
+}
+
+/* ── Sidebar mount ── */
+.sidebar-root {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: var(--z-sticky);
+}
+
+/* ── Right side wrapper ── */
+.app-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;                 /* prevents overflow with grid children */
+  min-height: 100vh;
+}
+
+/* ── Navbar mount ── */
+.navbar-root {
+  position: sticky;
+  top: 0;
+  height: var(--navbar-h);
+  z-index: var(--z-sticky);
+}
+
+/* ── Main dashboard ── */
+.main-dashboard {
+  flex: 1;
+  padding: var(--sp-6);
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+/* Dashboard grid (Map + Analytics) */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+/* ── Footer ── */
+.footer-root {
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

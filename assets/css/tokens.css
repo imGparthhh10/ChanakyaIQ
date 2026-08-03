@@ -1,0 +1,246 @@
+/* ══════════════════════════════════════════════════════════════
+   ESDS BFSI Geo Intelligence Dashboard — Design Tokens
+   Single source of truth for colors, spacing, radii, shadows,
+   typography, transitions. Theme-aware via [data-theme] attr.
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand palette (theme-invariant) ── */
+  --indigo:        #6366F1;
+  --indigo-light:  #818CF8;
+  --indigo-dark:   #4338CA;
+  --cyan:          #22D3EE;
+  --cyan-light:    #67E8F9;
+  --cyan-dark:     #0891B2;
+  --violet:        #A78BFA;
+  --purple:        #8B5CF6;
+  --emerald:       #10B981;
+  --emerald-dark:  #059669;
+  --amber:         #F59E0B;
+  --amber-dark:    #D97706;
+  --rose:          #F43F5E;
+  --rose-dark:     #BE123C;
+  --orange:        #F97316;
+  --teal:          #14B8A6;
+
+  /* ── ESDS Professional palette ── */
+  --esds-blue:       #1E40AF;
+  --esds-blue-light: #3B82F6;
+  --esds-blue-dark:  #1E3A8A;
+  --esds-purple:     #7C3AED;
+  --esds-purple-light:#A78BFA;
+  --esds-purple-dark: #5B21B6;
+  --esds-teal:       #0D9488;
+  --esds-teal-light: #2DD4BF;
+  --esds-teal-dark:  #115E59;
+  --esds-orange:     #EA580C;
+  --esds-orange-light:#FB923C;
+  --esds-orange-dark: #C2410C;
+  --esds-red:        #DC2626;
+  --esds-red-light:  #F87171;
+  --esds-red-dark:   #991B1B;
+  --esds-green:      #16A34A;
+  --esds-green-light:#4ADE80;
+  --esds-green-dark: #166534;
+
+  /* ── ESDS Gradients ── */
+  --grad-esds-blue:   linear-gradient(135deg, #1E3A8A, #3B82F6);
+  --grad-esds-purple: linear-gradient(135deg, #5B21B6, #A78BFA);
+  --grad-esds-teal:   linear-gradient(135deg, #115E59, #2DD4BF);
+  --grad-esds-orange: linear-gradient(135deg, #C2410C, #FB923C);
+  --grad-esds-red:    linear-gradient(135deg, #991B1B, #F87171);
+  --grad-esds-green:  linear-gradient(135deg, #166534, #4ADE80);
+
+  /* ── Typography ── */
+  --font-sans:  'DM Sans','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-mono:  'JetBrains Mono',ui-monospace,monospace;
+
+  --fs-xs:   11px;
+  --fs-sm:   12px;
+  --fs-md:   13px;
+  --fs-base: 14px;
+  --fs-lg:   16px;
+  --fs-xl:   19px;
+  --fs-2xl:  24px;
+  --fs-3xl:  32px;
+  --fs-4xl:  42px;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+  --fw-black:   800;
+
+  --lh-tight:  1.15;
+  --lh-normal: 1.5;
+  --lh-relaxed:1.65;
+
+  /* ── Spacing scale (4-pt grid) ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 56px;
+  --sp-10: 72px;
+
+  /* ── Radii ── */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-2xl: 28px;
+  --r-pill: 999px;
+
+  /* ── Transitions ── */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+
+  --t-fast:   140ms;
+  --t-med:    240ms;
+  --t-slow:   360ms;
+
+  /* ── Z-index scale ── */
+  --z-base:     1;
+  --z-elevated: 10;
+  --z-sticky:   50;
+  --z-drawer:   80;
+  --z-overlay:  90;
+  --z-toast:    100;
+  --z-loading:  200;
+
+  /* ── Layout ── */
+  --sidebar-w:        272px;
+  --sidebar-w-collapsed: 68px;
+  --navbar-h:         64px;
+  --content-max:      1600px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK THEME (default)
+   ══════════════════════════════════════════════════════════════ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Canvas */
+  --bg:            #060B17;
+  --bg-2:          #0A1020;
+  --bg-3:          #0E1629;
+  --surface:       #111827;
+  --surface-2:     #1A2540;
+  --surface-3:     #1E2D4A;
+
+  /* Glass */
+  --glass:         rgba(17, 24, 39, 0.72);
+  --glass-2:       rgba(26, 37, 64, 0.55);
+  --glass-hi:      rgba(255, 255, 255, 0.06);
+  --glass-lo:      rgba(255, 255, 255, 0.02);
+
+  /* Borders */
+  --border:        rgba(148, 163, 184, 0.10);
+  --border-2:      rgba(148, 163, 184, 0.16);
+  --border-glow:   rgba(99, 102, 241, 0.35);
+
+  /* Text */
+  --text-primary:   #F0F6FF;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+  --text-accent:    #818CF8;
+
+  /* Shadows & glows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5);
+
+  --glow-indigo:  0 0 24px rgba(99,102,241,0.4),  0 0 48px rgba(99,102,241,0.2);
+  --glow-cyan:    0 0 20px rgba(34,211,238,0.4),  0 0 40px rgba(34,211,238,0.15);
+  --glow-emerald: 0 0 20px rgba(16,185,129,0.4),  0 0 40px rgba(16,185,129,0.15);
+  --glow-rose:    0 0 20px rgba(244,63,94,0.4),   0 0 40px rgba(244,63,94,0.15);
+  --glow-amber:   0 0 20px rgba(245,158,11,0.4),  0 0 40px rgba(245,158,11,0.15);
+
+  --glow-card:    0 0 0 1px rgba(99,102,241,0.15), 0 8px 32px rgba(0,0,0,0.5),
+                  inset 0 1px 0 rgba(255,255,255,0.06);
+
+  /* Gradients */
+  --grad-brand:   linear-gradient(135deg,#6366F1 0%,#8B5CF6 50%,#22D3EE 100%);
+  --grad-indigo:  linear-gradient(135deg,#4338CA,#6366F1);
+  --grad-cyan:    linear-gradient(135deg,#0891B2,#22D3EE);
+  --grad-emerald: linear-gradient(135deg,#059669,#10B981);
+  --grad-amber:   linear-gradient(135deg,#D97706,#F59E0B);
+  --grad-rose:    linear-gradient(135deg,#BE123C,#F43F5E);
+  --grad-violet:  linear-gradient(135deg,#6D28D9,#A78BFA);
+  --grad-glass:   linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+  --grad-surface: linear-gradient(135deg,rgba(26,37,64,0.9),rgba(14,22,41,0.9));
+  --grad-aurora:  radial-gradient(ellipse at 20% 0%,rgba(99,102,241,0.18) 0%,transparent 55%),
+                  radial-gradient(ellipse at 85% 10%,rgba(34,211,238,0.14) 0%,transparent 50%),
+                  radial-gradient(ellipse at 50% 100%,rgba(167,139,250,0.10) 0%,transparent 60%);
+
+  /* Skeleton */
+  --sk-base:      rgba(148,163,184,0.08);
+  --sk-highlight: rgba(148,163,184,0.18);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME
+   ══════════════════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:            #F4F6FB;
+  --bg-2:          #EEF1F8;
+  --bg-3:          #E6EBF4;
+  --surface:       #FFFFFF;
+  --surface-2:     #F8FAFD;
+  --surface-3:     #EEF2F9;
+
+  --glass:         rgba(255, 255, 255, 0.72);
+  --glass-2:       rgba(255, 255, 255, 0.55);
+  --glass-hi:      rgba(255, 255, 255, 0.85);
+  --glass-lo:      rgba(255, 255, 255, 0.5);
+
+  --border:        rgba(15, 23, 42, 0.08);
+  --border-2:      rgba(15, 23, 42, 0.14);
+  --border-glow:   rgba(99, 102, 241, 0.35);
+
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
+  --text-accent:    #4338CA;
+
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.05);
+  --shadow-md: 0 4px 14px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.05);
+  --shadow-lg: 0 12px 36px rgba(15,23,42,0.10), 0 6px 12px rgba(15,23,42,0.05);
+  --shadow-xl: 0 24px 64px rgba(15,23,42,0.14), 0 10px 24px rgba(15,23,42,0.08);
+
+  --glow-indigo:  0 0 20px rgba(99,102,241,0.28);
+  --glow-cyan:    0 0 20px rgba(34,211,238,0.25);
+  --glow-emerald: 0 0 20px rgba(16,185,129,0.25);
+  --glow-rose:    0 0 20px rgba(244,63,94,0.25);
+  --glow-amber:   0 0 20px rgba(245,158,11,0.25);
+
+  --glow-card:    0 0 0 1px rgba(99,102,241,0.10),
+                  0 6px 22px rgba(15,23,42,0.08),
+                  inset 0 1px 0 rgba(255,255,255,0.8);
+
+  --grad-aurora:  radial-gradient(ellipse at 20% 0%,rgba(99,102,241,0.10) 0%,transparent 55%),
+                  radial-gradient(ellipse at 85% 10%,rgba(34,211,238,0.08) 0%,transparent 50%),
+                  radial-gradient(ellipse at 50% 100%,rgba(167,139,250,0.06) 0%,transparent 60%);
+
+  --grad-surface: linear-gradient(135deg,rgba(255,255,255,0.95),rgba(248,250,253,0.95));
+  --grad-glass:   linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.4));
+
+  --sk-base:      rgba(15,23,42,0.06);
+  --sk-highlight: rgba(15,23,42,0.12);
+}
+
+/* Respect OS preference when no explicit theme set */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { color-scheme: light; }
+}

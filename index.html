@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ESDS BFSI Geo Intelligence Dashboard — Enterprise market intelligence, geo-analytics and recommendation engine for the BFSI sector." />
+  <title>ESDS BFSI Geo Intelligence Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+  <link rel="stylesheet" href="assets/css/design-system.css" />
+  <link rel="stylesheet" href="assets/css/animations.css" />
+  <link rel="stylesheet" href="assets/css/responsive.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- ═══════════════ LOADING SCREEN ═══════════════ -->
+  <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-atomic="true" aria-hidden="false">
+    <div class="loading-inner">
+      <div class="loading-logo" aria-hidden="true">
+        <span class="logo-mark">E</span>
+        <span class="logo-pulse"></span>
+      </div>
+      <div class="loading-title">ESDS BFSI Geo Intelligence</div>
+      <div class="loading-sub">Initializing market intelligence engine…</div>
+      <div class="loading-bar" role="progressbar" aria-label="Loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ APP SHELL ═══════════════ -->
+  <div class="app-shell" id="app-shell">
+
+    <!-- Sidebar mount -->
+    <aside id="sidebar-root" class="sidebar-root" aria-label="Primary navigation"></aside>
+
+    <!-- Right side (Navbar + Main + Footer) -->
+    <div class="app-body">
+
+      <!-- Navbar mount -->
+      <header id="navbar-root" class="navbar-root" role="banner"></header>
+
+      <!-- Main dashboard -->
+      <main id="main" class="main-dashboard" role="main">
+
+        <!-- Dynamic page mount (Company 360, Lists, Signals) -->
+        <div id="page-mount" hidden></div>
+
+        <!-- Home page (existing dashboard) -->
+        <div id="home-page">
+
+        <!-- Page header -->
+        <section class="page-header glass-panel">
+          <div class="page-header-left">
+            <span class="eyebrow">Market Intelligence</span>
+            <h1 class="page-title">BFSI Geo Intelligence Atlas</h1>
+            <p class="page-sub">Real-time enterprise targeting across India's Banking, Financial Services &amp; Insurance ecosystem.</p>
+          </div>
+          <div class="page-header-right" role="group" aria-label="Dashboard actions">
+            <button class="btn btn-ghost" data-action="compare" aria-label="Compare up to 3 companies">
+              <span class="btn-ico" aria-hidden="true">⇄</span> Compare
+            </button>
+            <button class="btn btn-ghost" data-action="export" aria-label="Open export options">
+              <span class="btn-ico" aria-hidden="true">⬇</span> Export
+            </button>
+            <button class="btn btn-primary" data-action="refresh" aria-label="Reload dashboard data">
+              <span class="btn-ico" aria-hidden="true">⟳</span> Refresh
+            </button>
+          </div>
+        </section>
+
+        <!-- KPI Section -->
+        <section id="kpi-section" class="kpi-section" aria-label="Key performance indicators">
+          <div class="kpi-grid" id="kpi-grid">
+            <!-- Executive KPI cards injected by kpiCards.js — 12 skeleton placeholders -->
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+          </div>
+        </section>
+
+        <!-- Enterprise Filter Section -->
+        <section id="filter-section" class="filter-section glass-panel" aria-label="Enterprise filters">
+          <div class="filter-head">
+            <h2 class="section-title"><span class="dot dot-indigo"></span> Enterprise Filters</h2>
+            <button class="btn btn-ghost btn-sm" data-action="reset-filters">Reset</button>
+          </div>
+          <div class="filter-grid" id="filter-grid">
+            <!-- Filters injected by filters.js — skeleton placeholders -->
+            <div class="ef-field skeleton-card" style="grid-column:1/-1"><div class="sk sk-input" style="height:44px"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+            <div class="ef-field skeleton-card"><div class="sk sk-line w-30"></div><div class="sk sk-input"></div></div>
+          </div>
+        </section>
+
+        <!-- Map + Sidebar Analytics Row -->
+        <section class="dashboard-grid">
+
+          <!-- Map Container -->
+          <div id="map-container" class="map-container glass-panel" aria-label="Geo intelligence map">
+            <div class="map-head">
+              <h2 class="section-title"><span class="dot dot-cyan"></span> Geo Intelligence Map</h2>
+              <div class="map-controls">
+                <button class="chip-btn active" data-map-view="cluster">Cluster</button>
+                <button class="chip-btn" data-map-view="heat">Heatmap</button>
+                <button class="chip-btn" data-map-view="pins">Pins</button>
+              </div>
+            </div>
+            <div class="map-canvas-wrap">
+              <div id="map-canvas" class="map-canvas skeleton-map" role="img" aria-label="Map placeholder">
+                <div class="map-placeholder">
+                  <div class="map-placeholder-glow"></div>
+                  <span>Map will render here</span>
+                </div>
+              </div>
+              <div class="map-legend glass-card">
+                <span class="legend-item"><i class="legend-swatch bg-indigo"></i> Banks</span>
+                <span class="legend-item"><i class="legend-swatch bg-cyan"></i> NBFCs</span>
+                <span class="legend-item"><i class="legend-swatch bg-emerald"></i> Insurance</span>
+                <span class="legend-item"><i class="legend-swatch bg-amber"></i> Fintech</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar Analytics (3 compact charts) -->
+          <aside id="analytics-section" class="analytics-section" aria-label="Quick analytics">
+            <div class="glass-panel analytics-card">
+              <div class="analytics-head">
+                <h2 class="section-title"><span class="dot dot-violet"></span> Sector Mix</h2>
+              </div>
+              <div class="chart-slot" id="chart-sector-mix"><div class="sk sk-donut"></div></div>
+            </div>
+            <div class="glass-panel analytics-card">
+              <div class="analytics-head">
+                <h2 class="section-title"><span class="dot dot-emerald"></span> Revenue Distribution</h2>
+              </div>
+              <div class="chart-slot" id="chart-revenue-dist"><div class="sk sk-bars"></div></div>
+            </div>
+            <div class="glass-panel analytics-card">
+              <div class="analytics-head">
+                <h2 class="section-title"><span class="dot dot-amber"></span> Top States</h2>
+              </div>
+              <div class="chart-slot" id="chart-top-states"><div class="sk sk-list"></div></div>
+            </div>
+          </aside>
+        </section>
+
+        <!-- ═══════════════ FULL ANALYTICS CHARTS ═══════════════ -->
+        <section id="charts-section" class="charts-section" aria-label="Analytics charts">
+          <div class="charts-header glass-panel">
+            <div class="charts-header-left">
+              <h2 class="section-title"><span class="dot dot-violet"></span> Analytics Intelligence</h2>
+              <p class="section-sub">Interactive charts powered by Apache ECharts — click any segment to drill down.</p>
+            </div>
+            <div class="charts-header-right">
+              <div class="chart-tab-bar" id="chart-tab-bar">
+                <button class="chart-tab active" data-tab="distribution">Distribution</button>
+                <button class="chart-tab" data-tab="financial">Financial</button>
+                <button class="chart-tab" data-tab="readiness">Readiness</button>
+                <button class="chart-tab" data-tab="leaderboard">Leaderboard</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Distribution -->
+          <div class="chart-panel active" id="panel-distribution">
+            <div class="chart-row chart-row-3">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Companies by State</span></div><div class="chart-mount" id="ec-by-state"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Companies by Region</span></div><div class="chart-mount" id="ec-by-region"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Companies by Sector</span></div><div class="chart-mount" id="ec-by-sector"></div></div>
+            </div>
+          </div>
+
+          <!-- Tab: Financial -->
+          <div class="chart-panel" id="panel-financial">
+            <div class="chart-row chart-row-2">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Revenue by Sector</span></div><div class="chart-mount" id="ec-revenue"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">IT Spend by Region</span></div><div class="chart-mount" id="ec-it-spend"></div></div>
+            </div>
+            <div class="chart-row chart-row-2">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Opportunity Score</span></div><div class="chart-mount" id="ec-opportunity"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Buying Window</span></div><div class="chart-mount" id="ec-buying-window"></div></div>
+            </div>
+          </div>
+
+          <!-- Tab: Readiness -->
+          <div class="chart-panel" id="panel-readiness">
+            <div class="chart-row chart-row-3">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Cloud Readiness</span></div><div class="chart-mount" id="ec-cloud"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Cyber Score</span></div><div class="chart-mount" id="ec-cyber"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">AI Readiness</span></div><div class="chart-mount" id="ec-ai"></div></div>
+            </div>
+            <div class="chart-row chart-row-1">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Lead Priority</span></div><div class="chart-mount" id="ec-lead-priority"></div></div>
+            </div>
+          </div>
+
+          <!-- Tab: Leaderboard -->
+          <div class="chart-panel" id="panel-leaderboard">
+            <div class="chart-row chart-row-2">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Top Revenue Companies</span></div><div class="chart-mount" id="ec-top-revenue"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Top Opportunity Companies</span></div><div class="chart-mount" id="ec-top-opportunity"></div></div>
+            </div>
+            <div class="chart-row chart-row-2">
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Top AI-Ready Companies</span></div><div class="chart-mount" id="ec-top-ai"></div></div>
+              <div class="glass-panel chart-card"><div class="chart-card-head"><span class="chart-card-title">Top IT Spend Companies</span></div><div class="chart-mount" id="ec-top-it-spend"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recommendation Section -->
+        <section id="recommendation-section" class="recommendation-section glass-panel" aria-label="Recommendations">
+          <div class="recommendation-head">
+            <div>
+              <h2 class="section-title"><span class="dot dot-rose"></span> AI Recommendations</h2>
+              <p class="section-sub">Top prospect companies ranked by ESDS opportunity score.</p>
+            </div>
+            <div class="recommendation-actions">
+              <button class="btn btn-ghost btn-sm" data-action="view-all">View All</button>
+              <button class="btn btn-primary btn-sm" data-action="generate">Generate Strategy</button>
+            </div>
+          </div>
+          <div class="recommendation-grid" id="recommendation-grid">
+            <!-- Recommendation cards injected by recommendations.js -->
+            <div class="reco-card glass-card skeleton-card">
+              <div class="sk sk-avatar"></div>
+              <div class="sk sk-line w-60"></div>
+              <div class="sk sk-line w-40"></div>
+              <div class="sk sk-line w-80"></div>
+            </div>
+            <div class="reco-card glass-card skeleton-card">
+              <div class="sk sk-avatar"></div>
+              <div class="sk sk-line w-60"></div>
+              <div class="sk sk-line w-40"></div>
+              <div class="sk sk-line w-80"></div>
+            </div>
+            <div class="reco-card glass-card skeleton-card">
+              <div class="sk sk-avatar"></div>
+              <div class="sk sk-line w-60"></div>
+              <div class="sk sk-line w-40"></div>
+              <div class="sk sk-line w-80"></div>
+            </div>
+          </div>
+        </section>
+
+        </div><!-- /#home-page -->
+      </main>
+
+      <!-- Footer mount -->
+      <footer id="footer-root" class="footer-root" role="contentinfo"></footer>
+    </div>
+  </div>
+
+  <!-- ═══════════════ COMPANY DETAIL DRAWER ═══════════════ -->
+  <div id="drawer-root" class="drawer-root" aria-hidden="true"></div>
+  <div id="drawer-overlay" class="drawer-overlay" aria-hidden="true"></div>
+
+  <!-- ═══════════════ TOAST HOST ═══════════════ -->
+  <div id="toast-host" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+  <script type="module" src="assets/js/dashboard.js"></script>
+</body>
+</html>
