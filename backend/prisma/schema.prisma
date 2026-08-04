@@ -1,0 +1,977 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Address {
+  addressId      String       @id @default(dbgenerated("uuid_generate_v4()")) @map("address_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  addressLine    String?      @map("address_line")
+  cityId         Int?         @map("city_id")
+  stateId        Int?         @map("state_id") @db.SmallInt
+  pincode        String?
+  isHeadquarters Boolean      @default(false) @map("is_headquarters")
+  latitude       Decimal?     @db.Decimal(9, 6)
+  longitude      Decimal?     @db.Decimal(9, 6)
+  city           City?        @relation(fields: [cityId], references: [cityId], onDelete: NoAction, onUpdate: NoAction)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  state          State?       @relation(fields: [stateId], references: [stateId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("addresses")
+}
+
+model ApiKey {
+  apiKeyId   String    @id @default(dbgenerated("uuid_generate_v4()")) @map("api_key_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  keyHash    String    @unique @map("key_hash")
+  label      String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  revoked    Boolean   @default(false)
+  user       User      @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("api_keys")
+}
+
+model AuditLog {
+  auditId      BigInt   @id @default(autoincrement()) @map("audit_id")
+  userId       String?  @map("user_id") @db.Uuid
+  action       String
+  entityType   String?  @map("entity_type")
+  entityId     String?  @map("entity_id") @db.Uuid
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User?    @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entityType, entityId], map: "idx_audit_entity")
+  @@map("audit_logs")
+}
+
+model Branch {
+  branchId       String       @id @default(dbgenerated("uuid_generate_v4()")) @map("branch_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchName     String?      @map("branch_name")
+  cityId         Int?         @map("city_id")
+  stateId        Int?         @map("state_id") @db.SmallInt
+  branchType     String?      @map("branch_type")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  city           City?        @relation(fields: [cityId], references: [cityId], onDelete: NoAction, onUpdate: NoAction)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  state          State?       @relation(fields: [stateId], references: [stateId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId], map: "idx_branches_org")
+  @@map("branches")
+}
+
+model ChangeHistory {
+  changeId       BigInt       @id @default(autoincrement()) @map("change_id")
+  organizationId String       @map("organization_id") @db.Uuid
+  fieldName      String       @map("field_name")
+  oldValue       String?      @map("old_value")
+  newValue       String?      @map("new_value")
+  changedBy      String?      @map("changed_by")
+  changedAt      DateTime     @default(now()) @map("changed_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, changedAt(sort: Desc)], map: "idx_change_history_org")
+  @@map("change_history")
+}
+
+model City {
+  cityId    Int       @id @default(autoincrement()) @map("city_id")
+  cityName  String    @map("city_name")
+  stateId   Int       @map("state_id") @db.SmallInt
+  latitude  Decimal?  @db.Decimal(9, 6)
+  longitude Decimal?  @db.Decimal(9, 6)
+  addresses Address[]
+  branches  Branch[]
+  state     State     @relation(fields: [stateId], references: [stateId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([cityName, stateId])
+  @@map("cities")
+}
+
+model ContactProfile {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  primaryEmail   String?      @map("primary_email")
+  primaryPhone   String?      @map("primary_phone")
+  linkedinUrl    String?      @map("linkedin_url")
+  lastUpdatedAt  DateTime     @default(now()) @map("last_updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("contact_profiles")
+}
+
+model Contact {
+  contactId        String         @id @default(dbgenerated("uuid_generate_v4()")) @map("contact_id") @db.Uuid
+  organizationId   String         @map("organization_id") @db.Uuid
+  fullName         String?        @map("full_name")
+  designation      String?
+  channel          ContactChannel
+  value            String
+  isPrimary        Boolean        @default(false) @map("is_primary")
+  sourceDocumentId String?        @map("source_document_id") @db.Uuid
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization     Organization   @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  document         Document?      @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_contacts_doc")
+
+  @@map("contacts")
+}
+
+model CrawlJob {
+  crawlJobId     String         @id @default(dbgenerated("uuid_generate_v4()")) @map("crawl_job_id") @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  crawlSourceId  String?        @map("crawl_source_id") @db.Uuid
+  status         CrawlJobStatus @default(QUEUED)
+  retryCount     Int            @default(0) @map("retry_count") @db.SmallInt
+  maxRetries     Int            @default(3) @map("max_retries") @db.SmallInt
+  startedAt      DateTime?      @map("started_at") @db.Timestamptz(6)
+  finishedAt     DateTime?      @map("finished_at") @db.Timestamptz(6)
+  errorMessage   String?        @map("error_message")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  crawlSource    CrawlSource?   @relation(fields: [crawlSourceId], references: [crawlSourceId], onDelete: NoAction, onUpdate: NoAction)
+  organization   Organization   @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  documents      Document[]
+
+  @@index([organizationId, status], map: "idx_crawl_jobs_org_status")
+  @@map("crawl_jobs")
+}
+
+model CrawlSource {
+  crawlSourceId  String       @id @default(dbgenerated("uuid_generate_v4()")) @map("crawl_source_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  sourceType     DocumentType @map("source_type")
+  url            String
+  discoveredAt   DateTime     @default(now()) @map("discovered_at") @db.Timestamptz(6)
+  isActive       Boolean      @default(true) @map("is_active")
+  crawlJobs      CrawlJob[]
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId], map: "idx_crawl_sources_org")
+  @@map("crawl_sources")
+}
+
+model DashboardCache {
+  cacheKey   String   @id @map("cache_key")
+  cacheValue Json     @map("cache_value")
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@map("dashboard_cache")
+}
+
+model DashboardView {
+  viewId         String   @id @default(dbgenerated("uuid_generate_v4()")) @map("view_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  viewName       String   @map("view_name")
+  viewConfigJson Json     @map("view_config_json")
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("dashboard_views")
+}
+
+model DocumentChunk {
+  chunkId    String   @id @default(dbgenerated("uuid_generate_v4()")) @map("chunk_id") @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  chunkIndex Int      @map("chunk_index")
+  chunkText  String   @map("chunk_text")
+  tokenCount Int?     @map("token_count")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  document   Document @relation(fields: [documentId], references: [documentId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([documentId, chunkIndex])
+  @@map("document_chunks")
+}
+
+model DocumentVersion {
+  documentVersionId String   @id @default(dbgenerated("uuid_generate_v4()")) @map("document_version_id") @db.Uuid
+  documentId        String   @map("document_id") @db.Uuid
+  versionNumber     Int      @default(1) @map("version_number")
+  storagePath       String   @map("storage_path")
+  checksum          String?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  document          Document @relation(fields: [documentId], references: [documentId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([documentId, versionNumber])
+  @@map("document_versions")
+}
+
+model Document {
+  documentId         String              @id @default(dbgenerated("uuid_generate_v4()")) @map("document_id") @db.Uuid
+  organizationId     String              @map("organization_id") @db.Uuid
+  crawlJobId         String?             @map("crawl_job_id") @db.Uuid
+  documentType       DocumentType        @map("document_type")
+  url                String?
+  fileFormat         String?             @map("file_format")
+  storagePath        String              @map("storage_path")
+  checksum           String?
+  isScanned          Boolean             @default(false) @map("is_scanned")
+  detectedLanguage   String?             @map("detected_language")
+  status             DocumentStatus      @default(DOWNLOADED)
+  downloadedAt       DateTime            @default(now()) @map("downloaded_at") @db.Timestamptz(6)
+  contacts           Contact[]
+  documentChunks     DocumentChunk[]
+  documentVersions   DocumentVersion[]
+  crawlJob           CrawlJob?           @relation(fields: [crawlJobId], references: [crawlJobId], onDelete: NoAction, onUpdate: NoAction)
+  organization       Organization        @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  enrichmentJobs     EnrichmentJob[]
+  financialMetrics   FinancialMetric[]
+  leadership         Leadership[]
+  newsArticles       NewsArticle[]
+  technologyMetrics  TechnologyMetric[]
+  technologyProfiles TechnologyProfile[]
+  timelineEvents     TimelineEvent[]
+  translations       Translation[]
+
+  @@unique([organizationId, checksum])
+  @@index([organizationId, documentType], map: "idx_documents_org_type")
+  @@map("documents")
+}
+
+model EnrichmentJob {
+  enrichmentJobId   String            @id @default(dbgenerated("uuid_generate_v4()")) @map("enrichment_job_id") @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  documentId        String?           @map("document_id") @db.Uuid
+  status            ExtractionStatus  @default(PENDING)
+  llmModel          String?           @map("llm_model")
+  promptVersion     String?           @map("prompt_version")
+  rawResponseJson   Json?             @map("raw_response_json")
+  confidenceScore   Decimal?          @map("confidence_score") @db.Decimal(5, 2)
+  startedAt         DateTime?         @map("started_at") @db.Timestamptz(6)
+  finishedAt        DateTime?         @map("finished_at") @db.Timestamptz(6)
+  errorMessage      String?           @map("error_message")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  document          Document?         @relation(fields: [documentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction)
+  organization      Organization      @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  extractedEntities ExtractedEntity[]
+  llmProfiles       LlmProfile[]
+
+  @@index([organizationId, status], map: "idx_enrichment_org")
+  @@map("enrichment_jobs")
+}
+
+model EntityResolution {
+  resolutionId           String          @id @default(dbgenerated("uuid_generate_v4()")) @map("resolution_id") @db.Uuid
+  entityId               String          @map("entity_id") @db.Uuid
+  resolvedOrganizationId String?         @map("resolved_organization_id") @db.Uuid
+  resolutionMethod       String?         @map("resolution_method")
+  resolvedAt             DateTime        @default(now()) @map("resolved_at") @db.Timestamptz(6)
+  extractedEntity        ExtractedEntity @relation(fields: [entityId], references: [entityId], onDelete: Cascade, onUpdate: NoAction)
+  organization           Organization?   @relation(fields: [resolvedOrganizationId], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("entity_resolutions")
+}
+
+model ErrorLog {
+  errorId        BigInt        @id @default(autoincrement()) @map("error_id")
+  organizationId String?       @map("organization_id") @db.Uuid
+  workerName     String?       @map("worker_name")
+  errorType      String?       @map("error_type")
+  errorMessage   String        @map("error_message")
+  stackTrace     String?       @map("stack_trace")
+  occurredAt     DateTime      @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  resolved       Boolean       @default(false)
+  organization   Organization? @relation(fields: [organizationId], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, occurredAt(sort: Desc)], map: "idx_errors_org")
+  @@map("errors")
+}
+
+model ExtractedEntity {
+  entityId          String             @id @default(dbgenerated("uuid_generate_v4()")) @map("entity_id") @db.Uuid
+  enrichmentJobId   String             @map("enrichment_job_id") @db.Uuid
+  entityType        String             @map("entity_type")
+  entityValue       String             @map("entity_value")
+  normalizedValue   String?            @map("normalized_value")
+  confidence        Decimal?           @db.Decimal(5, 2)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  entityResolutions EntityResolution[]
+  enrichmentJob     EnrichmentJob      @relation(fields: [enrichmentJobId], references: [enrichmentJobId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([enrichmentJobId], map: "idx_entities_job")
+  @@index([entityType], map: "idx_entities_type")
+  @@map("extracted_entities")
+}
+
+model FinancialMetric {
+  financialMetricId String           @id @default(dbgenerated("uuid_generate_v4()")) @map("financial_metric_id") @db.Uuid
+  organizationId    String           @map("organization_id") @db.Uuid
+  metricId          Int              @map("metric_id") @db.SmallInt
+  fiscalYear        Int?             @map("fiscal_year") @db.SmallInt
+  value             Decimal          @db.Decimal(18, 4)
+  sourceDocumentId  String?          @map("source_document_id") @db.Uuid
+  confidence        Decimal?         @db.Decimal(5, 2)
+  extractedAt       DateTime         @default(now()) @map("extracted_at") @db.Timestamptz(6)
+  metricDefinition  MetricDefinition @relation(fields: [metricId], references: [metricId], onDelete: NoAction, onUpdate: NoAction)
+  organization      Organization     @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  document          Document?        @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_finmet_doc")
+
+  @@unique([organizationId, metricId, fiscalYear])
+  @@index([organizationId, metricId], map: "idx_fin_metrics_org")
+  @@map("financial_metrics")
+}
+
+model FinancialProfile {
+  organizationId   String       @id @map("organization_id") @db.Uuid
+  latestFiscalYear Int?         @map("latest_fiscal_year") @db.SmallInt
+  summary          String?
+  lastUpdatedAt    DateTime     @default(now()) @map("last_updated_at") @db.Timestamptz(6)
+  organization     Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("financial_profiles")
+}
+
+model JobHistory {
+  jobHistoryId   BigInt        @id @default(autoincrement()) @map("job_history_id")
+  workerName     String        @map("worker_name")
+  organizationId String?       @map("organization_id") @db.Uuid
+  referenceId    String?       @map("reference_id") @db.Uuid
+  status         String
+  startedAt      DateTime      @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt     DateTime?     @map("finished_at") @db.Timestamptz(6)
+  detailsJson    Json?         @map("details_json")
+  organization   Organization? @relation(fields: [organizationId], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, startedAt(sort: Desc)], map: "idx_job_history_org")
+  @@map("job_history")
+}
+
+model Leadership {
+  leadershipId     String       @id @default(dbgenerated("uuid_generate_v4()")) @map("leadership_id") @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  personName       String       @map("person_name")
+  designation      String
+  linkedinUrl      String?      @map("linkedin_url")
+  isCurrent        Boolean      @default(true) @map("is_current")
+  startDate        DateTime?    @map("start_date") @db.Date
+  endDate          DateTime?    @map("end_date") @db.Date
+  sourceDocumentId String?      @map("source_document_id") @db.Uuid
+  confidence       Decimal?     @db.Decimal(5, 2)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  document         Document?    @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_leadership_doc")
+  organization     Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("leadership")
+}
+
+model LeadershipProfile {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  ceoName        String?      @map("ceo_name")
+  ctoName        String?      @map("cto_name")
+  cioName        String?      @map("cio_name")
+  chairmanName   String?      @map("chairman_name")
+  lastUpdatedAt  DateTime     @default(now()) @map("last_updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("leadership_profiles")
+}
+
+model LlmProfile {
+  llmProfileId    String        @id @default(dbgenerated("uuid_generate_v4()")) @map("llm_profile_id") @db.Uuid
+  enrichmentJobId String        @map("enrichment_job_id") @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  profileJson     Json          @map("profile_json")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  enrichmentJob   EnrichmentJob @relation(fields: [enrichmentJobId], references: [enrichmentJobId], onDelete: Cascade, onUpdate: NoAction)
+  organization    Organization  @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("llm_profiles")
+}
+
+model MetricDefinition {
+  metricId           Int                 @id @default(autoincrement()) @map("metric_id") @db.SmallInt
+  metricKey          String              @unique @map("metric_key")
+  displayName        String              @map("display_name")
+  category           MetricCategory
+  unit               String              @default("INR_CR")
+  description        String?
+  isActive           Boolean             @default(true) @map("is_active")
+  financialMetrics   FinancialMetric[]
+  qualificationRules QualificationRule[]
+  scoreWeights       ScoreWeight[]
+  technologyMetrics  TechnologyMetric[]
+
+  @@map("metric_definitions")
+}
+
+model NewsArticle {
+  articleId       String           @id @default(dbgenerated("uuid_generate_v4()")) @map("article_id") @db.Uuid
+  newsSourceId    Int?             @map("news_source_id")
+  organizationId  String?          @map("organization_id") @db.Uuid
+  title           String
+  url             String?
+  publishedAt     DateTime?        @map("published_at") @db.Timestamptz(6)
+  bodyText        String?          @map("body_text")
+  documentId      String?          @map("document_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  document        Document?        @relation(fields: [documentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction)
+  newsSource      NewsSource?      @relation(fields: [newsSourceId], references: [newsSourceId], onDelete: NoAction, onUpdate: NoAction)
+  organization    Organization?    @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  newsEntities    NewsEntity[]
+  sentimentScores SentimentScore[]
+
+  @@index([organizationId, publishedAt(sort: Desc)], map: "idx_news_org")
+  @@map("news_articles")
+}
+
+model NewsEntity {
+  newsEntityId String      @id @default(dbgenerated("uuid_generate_v4()")) @map("news_entity_id") @db.Uuid
+  articleId    String      @map("article_id") @db.Uuid
+  entityType   String      @map("entity_type")
+  entityValue  String      @map("entity_value")
+  newsArticle  NewsArticle @relation(fields: [articleId], references: [articleId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("news_entities")
+}
+
+model NewsSource {
+  newsSourceId Int           @id @default(autoincrement()) @map("news_source_id")
+  sourceName   String        @map("source_name")
+  baseUrl      String?       @map("base_url")
+  isActive     Boolean       @default(true) @map("is_active")
+  newsArticles NewsArticle[]
+
+  @@map("news_sources")
+}
+
+model OpportunityTag {
+  tagId            Int               @id @default(autoincrement()) @map("tag_id") @db.SmallInt
+  tagName          String            @unique @map("tag_name")
+  organizationTags OrganizationTag[]
+
+  @@map("opportunity_tags")
+}
+
+model OrganizationAlias {
+  aliasId        String       @id @default(dbgenerated("uuid_generate_v4()")) @map("alias_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  aliasName      String       @map("alias_name")
+  aliasType      String?      @map("alias_type")
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("organization_aliases")
+}
+
+model OrganizationProfile {
+  organizationId     String       @id @map("organization_id") @db.Uuid
+  summary            String?
+  products           String[]
+  services           String[]
+  awards             String[]
+  partnerships       String[]
+  digitalInitiatives String[]     @map("digital_initiatives")
+  lastEnrichedAt     DateTime?    @map("last_enriched_at") @db.Timestamptz(6)
+  organization       Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("organization_profiles")
+}
+
+model OrganizationTag {
+  organizationId String         @map("organization_id") @db.Uuid
+  tagId          Int            @map("tag_id") @db.SmallInt
+  assignedAt     DateTime       @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  opportunityTag OpportunityTag @relation(fields: [tagId], references: [tagId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([organizationId, tagId])
+  @@map("organization_tags")
+}
+
+model Organization {
+  organizationId           String                    @id @default(dbgenerated("uuid_generate_v4()")) @map("organization_id") @db.Uuid
+  legalName                String                    @map("legal_name")
+  displayName              String?                   @map("display_name")
+  domain                   String?                   @unique
+  sectorId                 Int?                      @map("sector_id") @db.SmallInt
+  subsectorId              Int?                      @map("subsector_id") @db.SmallInt
+  ownershipType            OwnershipType?            @map("ownership_type")
+  incorporationYear        Int?                      @map("incorporation_year") @db.SmallInt
+  cinNumber                String?                   @map("cin_number")
+  status                   OrgStatus                 @default(NEW)
+  sourceOfEntry            String?                   @map("source_of_entry")
+  isDuplicateOf            String?                   @map("is_duplicate_of") @db.Uuid
+  icpScore                 Decimal?                  @map("icp_score") @db.Decimal(5, 2)
+  opportunityTier          OpportunityTier?          @map("opportunity_tier")
+  confidenceScore          Decimal?                  @map("confidence_score") @db.Decimal(5, 2)
+  createdBy                String?                   @map("created_by") @db.Uuid
+  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  addresses                Address[]
+  branches                 Branch[]
+  changeHistories          ChangeHistory[]
+  contactProfile           ContactProfile?
+  contacts                 Contact[]
+  crawlJobs                CrawlJob[]
+  crawlSources             CrawlSource[]
+  documents                Document[]
+  enrichmentJobs           EnrichmentJob[]
+  entityResolutions        EntityResolution[]
+  errorLogs                ErrorLog[]
+  financialMetrics         FinancialMetric[]
+  financialProfile         FinancialProfile?
+  jobHistories             JobHistory[]
+  leadership               Leadership[]
+  leadershipProfile        LeadershipProfile?
+  llmProfiles              LlmProfile[]
+  newsArticles             NewsArticle[]
+  organizationAliases      OrganizationAlias[]
+  organizationProfile      OrganizationProfile?
+  organizationTags         OrganizationTag[]
+  user                     User?                     @relation(fields: [createdBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  organization             Organization?             @relation("organizationsToorganizations", fields: [isDuplicateOf], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+  organizations            Organization[]            @relation("organizationsToorganizations")
+  sector                   Sector?                   @relation(fields: [sectorId], references: [sectorId], onDelete: NoAction, onUpdate: NoAction)
+  subsector                Subsector?                @relation(fields: [subsectorId], references: [subsectorId], onDelete: NoAction, onUpdate: NoAction)
+  processingLogs           ProcessingLog[]
+  qualificationResults     QualificationResult[]
+  scoreHistories           ScoreHistory[]
+  technologyMetrics        TechnologyMetric[]
+  technologyProfileSummary TechnologyProfileSummary?
+  technologyProfiles       TechnologyProfile[]
+  tierHistories            TierHistory[]
+  timelineEvents           TimelineEvent[]
+
+  @@index([legalName(ops: raw("ginTrgmOps"))], map: "idx_org_name_trgm", type: Gin)
+  @@index([icpScore(sort: Desc)], map: "idx_org_score")
+  @@index([sectorId, subsectorId], map: "idx_org_sector")
+  @@index([status], map: "idx_org_status")
+  @@map("organizations")
+}
+
+model Permission {
+  permissionId    Int              @id @default(autoincrement()) @map("permission_id") @db.SmallInt
+  permissionKey   String           @unique @map("permission_key")
+  description     String?
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model ProcessingLog {
+  logId          BigInt        @id @default(autoincrement()) @map("log_id")
+  organizationId String?       @map("organization_id") @db.Uuid
+  stage          String
+  message        String
+  level          String        @default("INFO")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, createdAt(sort: Desc)], map: "idx_processing_logs_org")
+  @@map("processing_logs")
+}
+
+model QualificationResult {
+  qualificationId String       @id @default(dbgenerated("uuid_generate_v4()")) @map("qualification_id") @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  ruleGroupId     Int?         @map("rule_group_id")
+  isQualified     Boolean      @map("is_qualified")
+  matchedRules    Json?        @map("matched_rules")
+  evaluatedAt     DateTime     @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  organization    Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  ruleGroup       RuleGroup?   @relation(fields: [ruleGroupId], references: [ruleGroupId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, evaluatedAt(sort: Desc)], map: "idx_qual_results_org")
+  @@map("qualification_results")
+}
+
+model QualificationRule {
+  ruleId           String           @id @default(dbgenerated("uuid_generate_v4()")) @map("rule_id") @db.Uuid
+  ruleGroupId      Int              @map("rule_group_id")
+  metricId         Int              @map("metric_id") @db.SmallInt
+  operator         String
+  thresholdValue   Decimal          @map("threshold_value") @db.Decimal(18, 4)
+  isActive         Boolean          @default(true) @map("is_active")
+  metricDefinition MetricDefinition @relation(fields: [metricId], references: [metricId], onDelete: NoAction, onUpdate: NoAction)
+  ruleGroup        RuleGroup        @relation(fields: [ruleGroupId], references: [ruleGroupId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("qualification_rules")
+}
+
+model Report {
+  reportId          String   @id @default(dbgenerated("uuid_generate_v4()")) @map("report_id") @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  reportName        String   @map("report_name")
+  reportType        String?  @map("report_type")
+  filterJson        Json?    @map("filter_json")
+  generatedFilePath String?  @map("generated_file_path")
+  generatedAt       DateTime @default(now()) @map("generated_at") @db.Timestamptz(6)
+  user              User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("reports")
+}
+
+model RolePermission {
+  roleId       Int        @map("role_id") @db.SmallInt
+  permissionId Int        @map("permission_id") @db.SmallInt
+  permission   Permission @relation(fields: [permissionId], references: [permissionId], onDelete: Cascade, onUpdate: NoAction)
+  role         Role       @relation(fields: [roleId], references: [roleId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Role {
+  roleId          Int              @id @default(autoincrement()) @map("role_id") @db.SmallInt
+  roleName        String           @unique @map("role_name")
+  description     String?
+  rolePermissions RolePermission[]
+  users           User[]
+
+  @@map("roles")
+}
+
+model RuleGroup {
+  ruleGroupId          Int                   @id @default(autoincrement()) @map("rule_group_id") @db.SmallInt
+  groupName            String                @map("group_name")
+  matchLogic           String                @default("ANY") @map("match_logic")
+  isActive             Boolean               @default(true) @map("is_active")
+  qualificationResults QualificationResult[]
+  qualificationRules   QualificationRule[]
+
+  @@map("rule_groups")
+}
+
+model SavedFilter {
+  filterId   String   @id @default(dbgenerated("uuid_generate_v4()")) @map("filter_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  filterName String   @map("filter_name")
+  filterJson Json     @map("filter_json")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user       User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, filterName])
+  @@map("saved_filters")
+}
+
+model ScoreHistory {
+  scoreHistoryId BigInt       @id @default(autoincrement()) @map("score_history_id")
+  organizationId String       @map("organization_id") @db.Uuid
+  scoreModelId   Int?         @map("score_model_id") @db.SmallInt
+  icpScore       Decimal      @map("icp_score") @db.Decimal(5, 2)
+  recordedAt     DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  scoreModel     ScoreModel?  @relation(fields: [scoreModelId], references: [scoreModelId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, recordedAt(sort: Desc)], map: "idx_score_history_org_time")
+  @@map("score_history")
+}
+
+model ScoreModel {
+  scoreModelId   Int            @id @default(autoincrement()) @map("score_model_id") @db.SmallInt
+  modelName      String         @map("model_name")
+  sectorId       Int?           @map("sector_id") @db.SmallInt
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  scoreHistories ScoreHistory[]
+  sector         Sector?        @relation(fields: [sectorId], references: [sectorId], onDelete: NoAction, onUpdate: NoAction)
+  scoreWeights   ScoreWeight[]
+
+  @@map("score_models")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ScoreWeight {
+  scoreWeightId    String            @id @default(dbgenerated("uuid_generate_v4()")) @map("score_weight_id") @db.Uuid
+  scoreModelId     Int               @map("score_model_id") @db.SmallInt
+  metricId         Int?              @map("metric_id") @db.SmallInt
+  componentName    String            @map("component_name")
+  weightPct        Decimal           @map("weight_pct") @db.Decimal(5, 2)
+  metricDefinition MetricDefinition? @relation(fields: [metricId], references: [metricId], onDelete: NoAction, onUpdate: NoAction)
+  scoreModel       ScoreModel        @relation(fields: [scoreModelId], references: [scoreModelId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([scoreModelId, componentName])
+  @@map("score_weights")
+}
+
+model Sector {
+  sectorId      Int            @id @default(autoincrement()) @map("sector_id") @db.SmallInt
+  sectorName    String         @unique @map("sector_name")
+  description   String?
+  organizations Organization[]
+  scoreModels   ScoreModel[]
+  subsectors    Subsector[]
+
+  @@map("sectors")
+}
+
+model SentimentScore {
+  sentimentId String         @id @default(dbgenerated("uuid_generate_v4()")) @map("sentiment_id") @db.Uuid
+  articleId   String         @map("article_id") @db.Uuid
+  label       SentimentLabel
+  score       Decimal?       @db.Decimal(4, 3)
+  modelUsed   String?        @map("model_used")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  newsArticle NewsArticle    @relation(fields: [articleId], references: [articleId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("sentiment_scores")
+}
+
+model Session {
+  sessionId String   @id @default(dbgenerated("uuid_generate_v4()")) @map("session_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  jwtId     String   @unique @map("jwt_id")
+  issuedAt  DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  revoked   Boolean  @default(false)
+  ipAddress String?  @map("ip_address") @db.Inet
+  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("sessions")
+}
+
+model State {
+  stateId          Int       @id @default(autoincrement()) @map("state_id") @db.SmallInt
+  stateName        String    @unique @map("state_name")
+  isUnionTerritory Boolean   @default(false) @map("is_union_territory")
+  region           String?
+  latitude         Decimal?  @db.Decimal(9, 6)
+  longitude        Decimal?  @db.Decimal(9, 6)
+  addresses        Address[]
+  branches         Branch[]
+  cities           City[]
+
+  @@map("states")
+}
+
+model Subsector {
+  subsectorId   Int            @id @default(autoincrement()) @map("subsector_id") @db.SmallInt
+  sectorId      Int            @map("sector_id") @db.SmallInt
+  subsectorName String         @map("subsector_name")
+  organizations Organization[]
+  sector        Sector         @relation(fields: [sectorId], references: [sectorId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([sectorId, subsectorName])
+  @@map("subsectors")
+}
+
+model TechnologyMetric {
+  technologyMetricId String           @id @default(dbgenerated("uuid_generate_v4()")) @map("technology_metric_id") @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  metricId           Int              @map("metric_id") @db.SmallInt
+  fiscalYear         Int?             @map("fiscal_year") @db.SmallInt
+  value              Decimal          @db.Decimal(18, 4)
+  sourceDocumentId   String?          @map("source_document_id") @db.Uuid
+  confidence         Decimal?         @db.Decimal(5, 2)
+  extractedAt        DateTime         @default(now()) @map("extracted_at") @db.Timestamptz(6)
+  document           Document?        @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_techmet_doc")
+  metricDefinition   MetricDefinition @relation(fields: [metricId], references: [metricId], onDelete: NoAction, onUpdate: NoAction)
+  organization       Organization     @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organizationId, metricId, fiscalYear])
+  @@index([organizationId, metricId], map: "idx_tech_metrics_org")
+  @@map("technology_metrics")
+}
+
+model TechnologyProfileSummary {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  summary        String?
+  lastUpdatedAt  DateTime     @default(now()) @map("last_updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("technology_profile_summary")
+}
+
+model TechnologyProfile {
+  techProfileId    String       @id @default(dbgenerated("uuid_generate_v4()")) @map("tech_profile_id") @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  category         String
+  valueText        String       @map("value_text")
+  sourceDocumentId String?      @map("source_document_id") @db.Uuid
+  confidence       Decimal?     @db.Decimal(5, 2)
+  extractedAt      DateTime     @default(now()) @map("extracted_at") @db.Timestamptz(6)
+  document         Document?    @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_techprof_doc")
+  organization     Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId], map: "idx_tech_profile_org")
+  @@map("technology_profiles")
+}
+
+model TierHistory {
+  tierHistoryId   BigInt          @id @default(autoincrement()) @map("tier_history_id")
+  organizationId  String          @map("organization_id") @db.Uuid
+  opportunityTier OpportunityTier @map("opportunity_tier")
+  recordedAt      DateTime        @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  organization    Organization    @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, recordedAt(sort: Desc)], map: "idx_tier_history_org_time")
+  @@map("tier_history")
+}
+
+model TimelineEvent {
+  eventId          String       @id @default(dbgenerated("uuid_generate_v4()")) @map("event_id") @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  eventType        String       @map("event_type")
+  eventSummary     String       @map("event_summary")
+  eventDate        DateTime?    @map("event_date") @db.Date
+  oldValue         Json?        @map("old_value")
+  newValue         Json?        @map("new_value")
+  sourceDocumentId String?      @map("source_document_id") @db.Uuid
+  confidence       Decimal?     @db.Decimal(5, 2)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization     Organization @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+  document         Document?    @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, eventDate(sort: Desc)], map: "idx_timeline_org_date")
+  @@map("timeline_events")
+}
+
+model Translation {
+  translationId         String   @id @default(dbgenerated("uuid_generate_v4()")) @map("translation_id") @db.Uuid
+  documentId            String   @map("document_id") @db.Uuid
+  sourceLanguage        String   @map("source_language")
+  targetLanguage        String   @default("en") @map("target_language")
+  translatedText        String?  @map("translated_text")
+  translatedStoragePath String?  @map("translated_storage_path")
+  engine                String   @default("IndicTrans2")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  document              Document @relation(fields: [documentId], references: [documentId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("translations")
+}
+
+model User {
+  userId         String          @id @default(dbgenerated("uuid_generate_v4()")) @map("user_id") @db.Uuid
+  fullName       String          @map("full_name")
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  roleId         Int             @map("role_id") @db.SmallInt
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  apiKeys        ApiKey[]
+  auditLogs      AuditLog[]
+  dashboardViews DashboardView[]
+  organizations  Organization[]
+  reports        Report[]
+  savedFilters   SavedFilter[]
+  sessions       Session[]
+  role           Role            @relation(fields: [roleId], references: [roleId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("users")
+}
+
+enum ContactChannel {
+  Email
+  Phone
+  LinkedIn
+  Twitter_X @map("Twitter/X")
+  Other
+
+  @@map("contact_channel")
+}
+
+enum CrawlJobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  RETRY
+
+  @@map("crawl_job_status")
+}
+
+enum DocumentStatus {
+  DOWNLOADED
+  FAILED
+  RETRYING
+  OCR_PENDING
+  OCR_DONE
+  PROCESSED
+
+  @@map("document_status")
+}
+
+enum DocumentType {
+  Official_Website    @map("Official Website")
+  Investor_Page       @map("Investor Page")
+  Annual_Report       @map("Annual Report")
+  AGM_Report          @map("AGM Report")
+  Financial_Statement @map("Financial Statement")
+  News
+  Government_Website  @map("Government Website")
+  RBI_Publication     @map("RBI Publication")
+  Press_Release       @map("Press Release")
+  Social_Media        @map("Social Media")
+  Sustainability_CSR  @map("Sustainability/CSR")
+  Career
+  Other
+
+  @@map("document_type")
+}
+
+enum ExtractionStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  MANUAL_REVIEW
+
+  @@map("extraction_status")
+}
+
+enum MetricCategory {
+  Financial
+  Technology
+  Workforce
+  Digital
+  Security
+  Other
+
+  @@map("metric_category")
+}
+
+enum OpportunityTier {
+  Strategic
+  Tier_1    @map("Tier 1")
+  Tier_2    @map("Tier 2")
+  Tier_3    @map("Tier 3")
+  Watchlist
+
+  @@map("opportunity_tier")
+}
+
+enum OrgStatus {
+  NEW
+  PENDING
+  IMPORTING
+  DISCOVERING_SOURCES
+  CRAWLING
+  DOCUMENTS_COLLECTED
+  OCR_COMPLETE
+  TRANSLATED
+  EXTRACTING
+  ENTITY_RESOLUTION
+  ENRICHED
+  ICP_RUNNING
+  QUALIFIED
+  ACTIVE
+  REVIEW_QUEUE
+  REJECTED
+  FAILED
+
+  @@map("org_status")
+}
+
+enum OwnershipType {
+  Government
+  Private
+  Cooperative
+  Public_Listed @map("Public Listed")
+  Foreign
+  Other
+
+  @@map("ownership_type")
+}
+
+enum SentimentLabel {
+  Positive
+  Neutral
+  Negative
+
+  @@map("sentiment_label")
+}

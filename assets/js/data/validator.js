@@ -62,7 +62,7 @@ function inferRegion(state) {
 }
 
 /** Normalize category names for consistent grouping. */
-function normalizeCategory(raw) {
+export function normalizeCategory(raw) {
   if (!raw) return 'Other';
   const s = raw.trim();
 

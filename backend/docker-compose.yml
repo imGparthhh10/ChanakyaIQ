@@ -1,0 +1,19 @@
+# Portability/deployment reference only. Local dev on this machine uses a
+# native PostgreSQL 18 service (see README.md) since Docker Desktop needs
+# WSL2/Hyper-V setup that isn't assumed to be available everywhere this
+# repo is checked out.
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: esds_app
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: esds_eip_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
