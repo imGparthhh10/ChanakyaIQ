@@ -245,6 +245,23 @@ export class DataCache {
     if (filters.employeeMin != null) results = results.filter(r => r.employeeCount >= filters.employeeMin);
     if (filters.employeeMax != null) results = results.filter(r => r.employeeCount != null && r.employeeCount <= filters.employeeMax);
 
+    // ICP filters — opportunityTier/icpScore/opportunityTags are plain
+    // fields already on each record (populated by the backend's ICP engine
+    // via GET /organizations), so no cross-module resolver is needed here,
+    // unlike owner/delta/signal below.
+    if (filters.opportunityTiers && filters.opportunityTiers.length) {
+      results = results.filter(r => filters.opportunityTiers.includes(r.opportunityTier));
+    }
+    if (filters.icpScoreMin != null) {
+      results = results.filter(r => r.icpScore != null && r.icpScore >= filters.icpScoreMin);
+    }
+    if (filters.icpScoreMax != null) {
+      results = results.filter(r => r.icpScore != null && r.icpScore <= filters.icpScoreMax);
+    }
+    if (filters.opportunityTags && filters.opportunityTags.length) {
+      results = results.filter(r => filters.opportunityTags.some(t => (r.opportunityTags || []).includes(t)));
+    }
+
     // Leadership text filters
     if (filters.ceo) { const q = filters.ceo.toLowerCase(); results = results.filter(r => r.ceo && r.ceo.toLowerCase().includes(q)); }
     if (filters.cto) { const q = filters.cto.toLowerCase(); results = results.filter(r => r.cto && r.cto.toLowerCase().includes(q)); }

@@ -30,10 +30,11 @@ import { opportunityValue }        from '../workspace/scoring.js';
 import { workspace }               from '../workspace/store.js';
 import { territory }               from '../workspace/territory.js';
 import { identity }                from '../workspace/identity.js';
-import { dataEngine }              from '../data/data.js';
+import { dataEngine, API_BASE }    from '../data/data.js';
 import { navigate }                from '../router.js';
 import { generateBrief }           from '../ai/brief.js';
 import { generatePrep }            from '../ai/meetingPrep.js';
+import { tierColor }               from '../utils/icpBadge.js';
 
 // ─── Helpers ──────────────────────────────────────
 
@@ -160,6 +161,10 @@ function renderHeader(rec) {
                 <span class="c360-score-dot" style="background:${scoreColor(score)}"></span>
                 Opportunity ${score}
               </span>
+              ${rec.opportunityTier ? `<span class="c360-score-chip" style="border-color:${tierColor(rec.opportunityTier)}44;color:${tierColor(rec.opportunityTier)}" title="ICP Tier">
+                <span class="c360-score-dot" style="background:${tierColor(rec.opportunityTier)}"></span>
+                ICP: ${escapeHTML(rec.opportunityTier)}${rec.icpScore != null ? ` (${Math.round(rec.icpScore)})` : ''}
+              </span>` : ''}
               <span class="c360-badge ${maturityClass(rec.cloudMaturity)}" title="Cloud maturity">
                 Cloud: ${escapeHTML(rec.cloudMaturity || 'N/A')}
               </span>
@@ -443,6 +448,56 @@ function renderESDSFit(rec) {
     <h3 class="c360-panel-title">${svgIcon('star')} ESDS Fit — Top ${recos.length}</h3>
     <div class="c360-fit-list">${items}</div>
   </div>`;
+}
+
+// Score/tier/tags render immediately (already on the bulk record);
+// qualification reasons aren't in the bulk payload, so they're patched in
+// once loadICPDetail()'s fetch resolves (see mountCompany360). Returns ''
+// entirely when unscored (POST /icp/run hasn't run yet, or
+// USE_LEGACY_EXCEL_PIPELINE is on and this field never existed at all).
+function renderICP(rec) {
+  if (rec.icpScore == null && !rec.opportunityTier) return '';
+
+  const tier = rec.opportunityTier || 'Unscored';
+  const color = tierColor(tier);
+  const tags = rec.opportunityTags || [];
+
+  return `<div class="c360-panel glass-panel">
+    <div class="c360-summary-head">
+      <h3 class="c360-panel-title">${svgIcon('star')} ICP Qualification</h3>
+      <span class="c360-score-chip" style="border-color:${color}44;color:${color}">
+        <span class="c360-score-dot" style="background:${color}"></span>
+        ${escapeHTML(tier)}${rec.icpScore != null ? ` · ${Math.round(rec.icpScore)}/100` : ''}
+      </span>
+    </div>
+    <p class="c360-panel-subtitle">${rec.isQualified ? 'Qualified' : 'Not qualified'} against the active qualification rules</p>
+    <div id="c360-icp-reasons">
+      <p class="c360-empty">Loading qualification reasons…</p>
+    </div>
+    ${tags.length ? `<div class="c360-panel-subtitle" style="margin-top:12px">Opportunity Tags</div>
+    <div class="c360-tags">${tags.map(t => `<span class="c360-tag">${escapeHTML(t)}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+/** Fetches GET /organizations/:id/icp and patches the reasons list in —
+ *  the one ICP field not included in the bulk GET /organizations payload. */
+async function loadICPDetail(container, rec) {
+  const target = qs('#c360-icp-reasons', container);
+  if (!target || !rec._organizationId) return;
+
+  try {
+    const resp = await fetch(`${API_BASE}/organizations/${rec._organizationId}/icp`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const detail = await resp.json();
+    const reasons = detail.qualificationReasons || [];
+
+    target.innerHTML = reasons.length
+      ? `<ul class="c360-pain-list">${reasons.map(r => `<li>${escapeHTML(r)}</li>`).join('')}</ul>`
+      : '<p class="c360-empty">No qualification rules matched.</p>';
+  } catch (err) {
+    target.innerHTML = '<p class="c360-empty">Qualification reasons unavailable.</p>';
+    console.warn('[company360] ICP detail fetch failed:', err.message);
+  }
 }
 
 function renderTechStack(rec) {
@@ -1095,6 +1150,7 @@ export async function mountCompany360(container, params) {
         </aside>
         <section class="c360-col c360-col-center">
           ${renderExecSummary(rec)}
+          ${renderICP(rec)}
           ${renderESDSFit(rec)}
           ${renderMaturitySection()}
           ${renderBranchNetwork(rec)}
@@ -1111,6 +1167,7 @@ export async function mountCompany360(container, params) {
   `;
 
   renderRadar(container, rec);
+  loadICPDetail(container, rec);
   const cleanup = wireActions(container, rec);
 
   // If we arrived here from a branch map-marker, scroll to and highlight it

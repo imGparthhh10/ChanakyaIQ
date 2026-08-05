@@ -8,6 +8,8 @@ const INCLUDE = {
   financialMetrics: { include: { metricDefinition: true } },
   technologyMetrics: { include: { metricDefinition: true } },
   technologyProfiles: true,
+  organizationTags: { include: { opportunityTag: true } },
+  qualificationResults: { take: 1, orderBy: { evaluatedAt: 'desc' } as const },
 } as const;
 
 export class OrganizationsRepository {

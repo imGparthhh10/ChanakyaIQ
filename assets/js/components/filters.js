@@ -48,6 +48,41 @@ const EMPLOYEE_BRACKETS = [
   { label: '> 50,000',    min: 50000, max: null },
 ];
 
+const ICP_SCORE_BRACKETS = [
+  { label: 'All',        min: null, max: null },
+  { label: '0 – 25',     min: 0,    max: 25 },
+  { label: '25 – 50',    min: 25,   max: 50 },
+  { label: '50 – 75',    min: 50,   max: 75 },
+  { label: '75 – 90',    min: 75,   max: 90 },
+  { label: '90 – 100',   min: 90,   max: 100 },
+];
+
+// Maps a `type: 'range'` filter def id to its cache.js query() filter keys.
+const RANGE_FILTER_KEYS = {
+  revenue:   ['revenueMin', 'revenueMax'],
+  employees: ['employeeMin', 'employeeMax'],
+  icpScore:  ['icpScoreMin', 'icpScoreMax'],
+};
+
+// Fixed set — the ICP engine's 5 tiers (backend/src/modules/icp/icp.service.ts).
+const TIER_OPTIONS = [
+  { value: 'Strategic', label: 'Strategic' },
+  { value: 'Tier 1',     label: 'Tier 1' },
+  { value: 'Tier 2',     label: 'Tier 2' },
+  { value: 'Tier 3',     label: 'Tier 3' },
+  { value: 'Watchlist',  label: 'Watchlist' },
+];
+
+// Live tag list — computed from whatever's actually in the loaded data,
+// not a hardcoded list (opportunity_tags is DB-seeded and could grow).
+function opportunityTagOptions(cache) {
+  const set = new Set();
+  for (const r of cache.getAll()) {
+    for (const t of r.opportunityTags || []) set.add(t);
+  }
+  return [...set].sort();
+}
+
 const SAVED_FILTERS_KEY = 'esds_bfsi_saved_filters';
 const MAX_SUGGESTIONS   = 8;
 const DEBOUNCE_MS       = 180;
@@ -98,6 +133,13 @@ function buildFilterDefs(cache) {
     { id: 'subSector',    label: 'Sub Category',  type: 'select', icon: 'layers',      options: () => cache.subSectors() },
     { id: 'revenue',      label: 'Revenue',       type: 'range',  icon: 'dollar',      brackets: REVENUE_BRACKETS },
     { id: 'employees',    label: 'Employees',     type: 'range',  icon: 'user',        brackets: EMPLOYEE_BRACKETS },
+
+    // ICP (backend/src/modules/icp/) — undefined/null on every record when
+    // USE_LEGACY_EXCEL_PIPELINE is on, since Excel-sourced records never
+    // carry these fields; the filters simply match nothing in that case.
+    { id: 'opportunityTiers', label: 'Opportunity Tier', type: 'chips', icon: 'star',   optionObjs: TIER_OPTIONS },
+    { id: 'icpScore',         label: 'ICP Score',        type: 'range', icon: 'trendUp', brackets: ICP_SCORE_BRACKETS },
+    { id: 'opportunityTags',  label: 'Opportunity Tags', type: 'chips', icon: 'layers',  options: () => opportunityTagOptions(cache) },
 
     // Leadership
     { id: 'ceo',          label: 'CEO',           type: 'text',   icon: 'user',        placeholder: 'Search CEO…' },
@@ -357,6 +399,8 @@ function renderFilterField(def) {
     wrap.appendChild(renderRangeField(def));
   } else if (def.type === 'text') {
     wrap.appendChild(renderTextField(def));
+  } else if (def.type === 'chips') {
+    wrap.appendChild(renderChipToggleField(def));
   }
 
   return wrap;
@@ -407,13 +451,12 @@ function renderRangeField(def) {
   }
 
   select.addEventListener('change', () => {
+    const [minKey, maxKey] = RANGE_FILTER_KEYS[def.id];
     const bracket = def.brackets.find(b => b.label === select.value);
     if (!bracket || (bracket.min == null && bracket.max == null)) {
-      delete _filters[def.id === 'revenue' ? 'revenueMin' : 'employeeMin'];
-      delete _filters[def.id === 'revenue' ? 'revenueMax' : 'employeeMax'];
+      delete _filters[minKey];
+      delete _filters[maxKey];
     } else {
-      const minKey = def.id === 'revenue' ? 'revenueMin' : 'employeeMin';
-      const maxKey = def.id === 'revenue' ? 'revenueMax' : 'employeeMax';
       if (bracket.min != null) _filters[minKey] = bracket.min; else delete _filters[minKey];
       if (bracket.max != null) _filters[maxKey] = bracket.max; else delete _filters[maxKey];
     }
@@ -424,6 +467,37 @@ function renderRangeField(def) {
   selectWrap.appendChild(select);
   selectWrap.appendChild(chevron);
   return selectWrap;
+}
+
+// Multi-select chip toggle group — reuses the existing .c360-tag pill class
+// (dashboard.css) rather than inventing a new component; selected/
+// unselected state is a small inline-style toggle (opacity + accent
+// border) rather than a new CSS class, since no existing class already
+// expresses a "chip is active" state.
+function renderChipToggleField(def) {
+  const wrap = h('div', { class: 'ef-chip-group' });
+  const options = Array.isArray(def.optionObjs)
+    ? def.optionObjs
+    : (typeof def.options === 'function' ? def.options() : []).map(v => ({ value: v, label: v }));
+
+  const selected = new Set(_filters[def.id] || []);
+
+  const styleFor = (isOn) => isOn
+    ? 'opacity:1;border-color:var(--indigo);font-weight:600;cursor:pointer;'
+    : 'opacity:0.55;cursor:pointer;';
+
+  for (const o of options) {
+    const chip = h('span', { class: 'c360-tag', style: styleFor(selected.has(o.value)) }, o.label);
+    chip.addEventListener('click', () => {
+      if (selected.has(o.value)) selected.delete(o.value); else selected.add(o.value);
+      chip.setAttribute('style', styleFor(selected.has(o.value)));
+      if (selected.size) _filters[def.id] = [...selected]; else delete _filters[def.id];
+      applyFilters();
+    });
+    wrap.appendChild(chip);
+  }
+
+  return wrap;
 }
 
 function renderTextField(def) {
@@ -515,6 +589,7 @@ function resetAllFilters() {
   // Reset all select elements
   qsa('.ef-select').forEach(sel => { sel.selectedIndex = 0; });
   qsa('.ef-text-input').forEach(inp => { inp.value = ''; });
+  qsa('.ef-chip-group .c360-tag').forEach(chip => chip.setAttribute('style', 'opacity:0.55;cursor:pointer;'));
 
   const searchInput = qs('#ef-search');
   if (searchInput) searchInput.value = '';
@@ -533,10 +608,11 @@ function renderActiveTags() {
   wrap.innerHTML = '';
 
   for (const [key, val] of Object.entries(_filters)) {
-    if (val == null || val === '') continue;
+    if (val == null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
     const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+    const displayVal = Array.isArray(val) ? val.join(', ') : val;
     const tag = h('span', { class: 'ef-tag' }, [
-      document.createTextNode(`${displayKey}: ${val}`),
+      document.createTextNode(`${displayKey}: ${displayVal}`),
       h('button', {
         class: 'ef-tag-remove',
         'aria-label': `Remove ${displayKey} filter`,
@@ -570,6 +646,16 @@ function removeFilter(key) {
     delete _filters.employeeMax;
     const sel = qs('#ef-employees');
     if (sel) sel.selectedIndex = 0;
+  }
+  if (key === 'icpScoreMin' || key === 'icpScoreMax') {
+    delete _filters.icpScoreMin;
+    delete _filters.icpScoreMax;
+    const sel = qs('#ef-icpScore');
+    if (sel) sel.selectedIndex = 0;
+  }
+  if (key === 'opportunityTiers' || key === 'opportunityTags') {
+    const wrap = qs(`[data-filter-id="${key}"] .ef-chip-group`);
+    if (wrap) qsa('.c360-tag', wrap).forEach(chip => chip.setAttribute('style', 'opacity:0.55;cursor:pointer;'));
   }
 
   if (key === 'search') {

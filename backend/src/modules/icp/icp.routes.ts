@@ -17,13 +17,24 @@ icpRoutes.post('/run', async (_req, res, next) => {
 });
 
 export async function getOrgIcp(organizationId: string) {
-  const [qualification, score, tier] = await repo.latestForOrg(organizationId);
+  const [[qualification, score, tier], opportunityTags, qualificationDate] = await Promise.all([
+    repo.latestForOrg(organizationId),
+    repo.orgTags(organizationId),
+    repo.firstQualifiedAt(organizationId),
+  ]);
+
+  const matchedRules = (qualification?.matchedRules as { rule: string; reason: string; passed: boolean }[] | null) ?? null;
+  const qualificationReasons = matchedRules?.filter((r) => r.passed).map((r) => r.reason) ?? [];
+
   return {
     isQualified: qualification?.isQualified ?? null,
-    matchedRules: qualification?.matchedRules ?? null,
+    matchedRules,
+    qualificationReasons,
     ruleGroup: qualification?.ruleGroup?.groupName ?? null,
     icpScore: score ? Number(score.icpScore) : null,
-    scoredAt: score?.recordedAt ?? null,
     opportunityTier: tier?.opportunityTier ?? null,
+    opportunityTags,
+    qualificationDate,
+    lastUpdatedDate: qualification?.evaluatedAt ?? null,
   };
 }

@@ -26,7 +26,10 @@ import { loadGujarat } from './gujarat.js';
 // Flip to true to roll back to the in-browser Excel pipeline.
 const USE_LEGACY_EXCEL_PIPELINE = false;
 
-const API_BASE = 'http://localhost:4000/api';
+// Exported so pages can call other endpoints directly (e.g. Company 360's
+// live GET /organizations/:id/icp fetch for qualification reasons, which
+// aren't in the bulk GET /organizations payload). No pipeline behavior change.
+export const API_BASE = 'http://localhost:4000/api';
 
 const EXCEL_FILES = [
   'data/BFSI_Master_Database.xlsx',

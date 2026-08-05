@@ -49,8 +49,8 @@ export function mapOrganization(org: any) {
     parentCompany: null,
     category: org.subsector?.subsectorName ?? org.sector?.sectorName ?? null,
     subSector: org.subsector?.subsectorName ?? null,
-    ownership: org.ownershipType ?? null,
-    listedStatus: org.ownershipType === 'Public Listed' ? 'Listed' : null,
+    ownership: org.ownershipType ? String(org.ownershipType).replace(/_/g, ' ') : null,
+    listedStatus: org.ownershipType === 'Public_Listed' ? 'Listed' : null,
     stockSymbol: null,
     cin: org.cinNumber ?? null,
     website: org.domain ?? null,
@@ -117,6 +117,15 @@ export function mapOrganization(org: any) {
     // Branch summary — the flat per-branch list (GET /branches) carries the
     // detail; this is just the total count for KPI cards.
     branchTotal: org._branchCount ?? 0,
+
+    // ICP (see backend/src/modules/icp/) — null until POST /icp/run has
+    // scored this org at least once. isQualified/tags/tier reflect the most
+    // recent run only; GET /organizations/:id/icp has full explainability
+    // (matched rules, qualification date, etc.).
+    icpScore: org.icpScore != null ? Number(org.icpScore) : null,
+    opportunityTier: org.opportunityTier ? String(org.opportunityTier).replace(/_/g, ' ') : null,
+    isQualified: org.qualificationResults?.[0]?.isQualified ?? null,
+    opportunityTags: (org.organizationTags ?? []).map((t: any) => t.opportunityTag.tagName),
 
     _source: 'postgres',
     _dedupeKey: normalizeForDedup(org.legalName),

@@ -23,6 +23,7 @@ import { announce }                 from '../utils/a11y.js';
 import { CleanupRegistry, debounce }from '../utils/perf.js';
 import { Icon }                     from '../components/icons.js';
 import { dataEngine }               from '../data/data.js';
+import { tierBadgeHtml }            from '../utils/icpBadge.js';
 import { workspace }                from '../workspace/store.js';
 import { territory }                from '../workspace/territory.js';
 import { identity }                 from '../workspace/identity.js';
@@ -158,6 +159,7 @@ function render(container, opts) {
                 <th>Location</th>
                 <th class="mt-num">Score</th>
                 <th class="mt-num">TAM</th>
+                <th>ICP Tier</th>
                 <th>Rationale</th>
                 <th></th>
               </tr>
@@ -226,6 +228,7 @@ function renderRow(item, i) {
     <td class="mt-muted">${escapeHTML([r.hqCity, r.state].filter(Boolean).join(', ') || '—')}</td>
     <td class="mt-num"><span class="mt-score-chip" style="color:${tier.color};border-color:${tier.color}44">${item.score}</span></td>
     <td class="mt-num">${escapeHTML(fmt(r.buyingPotential))}</td>
+    <td>${tierBadgeHtml(r.opportunityTier, r.icpScore)}</td>
     <td class="ws-rationale">${escapeHTML(rationale)}</td>
     <td>
       <button class="btn btn-ghost btn-sm ws-assign-me" data-key="${escapeHTML(r._dedupeKey)}">${svgIcon('plus')} Add to me</button>

@@ -23,6 +23,7 @@ import { dataEngine }                from '../data/data.js';
 import { workspace }                 from '../workspace/store.js';
 import { territory }                 from '../workspace/territory.js';
 import { identity }                  from '../workspace/identity.js';
+import { tierBadgeHtml }             from '../utils/icpBadge.js';
 import { opportunityValue, scoreTier } from '../workspace/scoring.js';
 import { deriveSignalTypes }         from '../workspace/signals.js';
 
@@ -201,6 +202,7 @@ function renderTable(records) {
           <th>Location</th>
           <th class="mt-num">Score</th>
           <th class="mt-num">TAM</th>
+          <th>ICP Tier</th>
           <th>Status</th>
           <th>Signals</th>
           <th></th>
@@ -229,6 +231,7 @@ function renderRow(r) {
       <span class="mt-score-chip" style="color:${tier.color};border-color:${tier.color}44">${score}</span>
     </td>
     <td class="mt-num">${escapeHTML(fmt(r.buyingPotential))}</td>
+    <td>${tierBadgeHtml(r.opportunityTier, r.icpScore)}</td>
     <td>
       <select class="mt-row-status" data-key="${escapeHTML(key)}" aria-label="Status for ${escapeHTML(r.companyName)}">
         ${workspace.STATUS_VALUES.map(s => `<option value="${s}"${s === status ? ' selected' : ''}>${s}</option>`).join('')}

@@ -61,8 +61,8 @@
   padding: var(--sp-5) var(--sp-6);
   border-top: 1px solid var(--border);
   background: var(--glass);
-  backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }

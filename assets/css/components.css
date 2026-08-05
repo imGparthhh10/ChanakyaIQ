@@ -6,8 +6,8 @@
 /* ── Glass primitives ── */
 .glass-panel {
   background: var(--glass);
-  backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-md);
@@ -19,8 +19,8 @@
 
 .glass-card {
   background: var(--grad-glass);
-  backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
@@ -188,6 +188,7 @@
   flex-direction: column;
   gap: var(--sp-2);
 }
+.skeleton-card-full { grid-column: 1 / -1; }
 .sk {
   background: var(--sk-base);
   border-radius: var(--r-sm);
@@ -205,6 +206,7 @@
 .sk-line   { height: 10px; }
 .sk-num    { height: 30px; width: 60%; }
 .sk-input  { height: 38px; }
+.sk-input-lg { height: 44px; }
 .sk-avatar { width: 40px; height: 40px; border-radius: 50%; }
 .sk-donut  { height: 180px; border-radius: 50%; width: 180px; margin: 0 auto; }
 .sk-bars   { height: 180px; }
@@ -245,8 +247,8 @@
   max-width: 380px;
   padding: var(--sp-3) var(--sp-4);
   background: var(--glass);
-  backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
   border: 1px solid var(--border-2);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
@@ -262,8 +264,8 @@
   position: fixed;
   inset: 0;
   background: rgba(6, 11, 23, 0.55);
-  backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--t-med) var(--ease-smooth);
@@ -278,8 +280,8 @@
   height: 100vh;
   width: min(480px, 92vw);
   background: var(--glass);
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border-left: 1px solid var(--border-2);
   box-shadow: var(--shadow-xl);
   transform: translateX(100%);

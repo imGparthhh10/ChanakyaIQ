@@ -25,6 +25,7 @@ function computeExecutiveKPIs(cache, records) {
   let aiScoreSum = 0, aiCount = 0;
   let cyberScoreSum = 0, cyberCount = 0;
   let highestRevRec = null, highestRev = 0;
+  let qualifiedCount = 0, strategicCount = 0;
 
   const maturityScore = (level) => {
     if (!level) return 0;
@@ -46,6 +47,8 @@ function computeExecutiveKPIs(cache, records) {
     if (r.itSpend != null)    totalIT += r.itSpend;
     if (r.cloudSpend != null) totalCloud += r.cloudSpend;
     if (r.netProfit != null)  { totalNetProfit += r.netProfit; netProfitCount++; }
+    if (r.isQualified)        qualifiedCount++;
+    if (r.opportunityTier === 'Strategic') strategicCount++;
 
     const ai = maturityScore(r.aiReadiness);
     if (ai > 0) { aiScoreSum += ai; aiCount++; }
@@ -125,6 +128,8 @@ function computeExecutiveKPIs(cache, records) {
     topSector: topSector?.name || '—',
     topSectorScore: topSector?.avg || 0,
     highestROISector: sectorROI[0]?.name || '—',
+    icpQualifiedCount: qualifiedCount,
+    strategicAccountCount: strategicCount,
     sparkCatRevenue: catRevSorted,
     sparkStateCounts: stateCountValues,
 
@@ -300,6 +305,29 @@ function buildCardDefs(kpis) {
       icon: 'layers',
       color: '#14B8A6',
       gradient: 'linear-gradient(135deg, #134E4A, #14B8A6)',
+    },
+    {
+      // 0 for every card until POST /icp/run has scored the data (or when
+      // USE_LEGACY_EXCEL_PIPELINE is on, since Excel-sourced records never
+      // carry isQualified/opportunityTier at all) — not an error state.
+      id: 'icp-qualified',
+      label: 'ICP Qualified',
+      value: fmtNumber(kpis.icpQualifiedCount),
+      rawValue: kpis.icpQualifiedCount,
+      sub: kpis.totalCompanies ? `${Math.round((kpis.icpQualifiedCount / kpis.totalCompanies) * 100)}% of companies` : '—',
+      icon: 'star',
+      color: '#22C55E',
+      gradient: 'linear-gradient(135deg, #14532D, #22C55E)',
+    },
+    {
+      id: 'strategic-accounts',
+      label: 'Strategic Accounts',
+      value: fmtNumber(kpis.strategicAccountCount),
+      rawValue: kpis.strategicAccountCount,
+      sub: 'ICP Tier: Strategic',
+      icon: 'trendUp',
+      color: '#F59E0B',
+      gradient: 'linear-gradient(135deg, #78350F, #F59E0B)',
     },
     {
       id: 'avg-ai',

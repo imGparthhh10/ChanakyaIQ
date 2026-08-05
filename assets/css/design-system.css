@@ -106,8 +106,8 @@
 
 .card {
   background: var(--glass);
-  backdrop-filter: blur(16px) saturate(170%);
   -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
@@ -190,8 +190,8 @@
   border-radius: var(--r-lg);
   border: 1px solid var(--border);
   background: var(--glass);
-  backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
 }
 
 .ds-table {
@@ -526,8 +526,8 @@
   max-height: 320px;
   overflow-y: auto;
   background: var(--glass);
-  backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--border-2);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
@@ -791,8 +791,8 @@
   border-radius: var(--r-lg);
   overflow: hidden;
   background: var(--glass);
-  backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
 }
 .accordion-item {
   border-bottom: 1px solid var(--border);
@@ -853,8 +853,8 @@
   inset: 0;
   z-index: var(--z-overlay);
   background: rgba(6, 11, 23, 0.65);
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -873,8 +873,8 @@
   max-width: 540px;
   max-height: 85vh;
   background: var(--glass);
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border-2);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-xl);
@@ -947,8 +947,8 @@
   border-radius: var(--r-md);
   border: 1px solid var(--border-2);
   background: var(--glass);
-  backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
   animation: fade-in var(--t-med) var(--ease-out) both;
 }
 .notification-icon {
