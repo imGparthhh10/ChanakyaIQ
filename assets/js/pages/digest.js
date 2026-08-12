@@ -3,7 +3,10 @@
  *
  * URL: #/digest
  *
- * Personalized to identity.current():
+ * Greeting/avatar are the real logged-in user (authClient.currentUser()).
+ * Everything else is personalized to identity.current() — a separate,
+ * pre-existing "workspace persona" system (territory ownership, notes
+ * authorship) that predates real auth and isn't part of it:
  *   ┌ Greeting + week summary                          ┐
  *   ├ Score movers in MY book (up + down)              ┤
  *   ├ Top 5 accounts to action this week (owned only)  ┤
@@ -21,7 +24,8 @@ import { escapeHTML }                from '../utils/sanitize.js';
 import { CleanupRegistry }           from '../utils/perf.js';
 import { Icon }                      from '../components/icons.js';
 import { dataEngine }                from '../data/data.js';
-import { identity }                  from '../workspace/identity.js';
+import { getTimeBasedGreeting }      from '../utils/greeting.js';
+import { currentUser }               from '../data/authClient.js';
 import { territory }                 from '../workspace/territory.js';
 import { workspace }                 from '../workspace/store.js';
 import { opportunityValue, confidenceScore } from '../workspace/scoring.js';
@@ -41,22 +45,20 @@ function fmt(n) {
   return '₹' + Number(n).toFixed(0) + ' Cr';
 }
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
 // ─── Sections ─────────────────────────────────────
 
+// `user` here is the real logged-in account (authClient.currentUser()) —
+// greeting/avatar only. `myBook` below is still scoped to
+// identity.current()'s persona (territory.myBook() reads that internally,
+// unrelated to who's actually logged in) — a pre-existing, separate
+// feature this greeting fix doesn't touch.
 function renderHero(user, myBook) {
   const summary = workspace.summary();
   return `
     <section class="glass-panel digest-hero">
-      <div class="digest-hero-avatar" style="background:${user?.color || '#6366F1'}22;color:${user?.color || '#818CF8'}">${escapeHTML(user?.initials || 'U')}</div>
+      <div class="digest-hero-avatar">${escapeHTML(user?.initials || 'U')}</div>
       <div class="digest-hero-body">
-        <h1 class="digest-hero-title">${greeting()}, ${escapeHTML((user?.name || 'there').split(' ')[0])}.</h1>
+        <h1 class="digest-hero-title">${getTimeBasedGreeting()}, ${escapeHTML((user?.name || 'there').split(' ')[0])}.</h1>
         <p class="digest-hero-sub">Here's what changed in your book this week.</p>
         <div class="digest-hero-stats">
           <span><b>${myBook.length}</b> accounts</span>
@@ -207,7 +209,7 @@ function renderDataAlerts(myBook) {
 
 export async function mountDigest(container) {
   const cache = dataEngine.cache;
-  const user  = identity.current();
+  const user  = currentUser(); // real logged-in user — greeting/avatar only, see renderHero()
 
   if (!cache) {
     container.innerHTML = `<div class="page-container"><section class="glass-panel"><p style="padding:var(--sp-6);text-align:center;color:var(--text-muted)">Waiting for data engine…</p></section></div>`;

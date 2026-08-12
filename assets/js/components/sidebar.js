@@ -7,7 +7,7 @@
 
 import { h, mount, qs, qsa } from '../utils/dom.js';
 import { bus }               from '../utils/eventBus.js';
-import { identity }          from '../workspace/identity.js';
+import { currentUser, logout } from '../data/authClient.js';
 
 /**
  * Nav model — each item has:
@@ -31,10 +31,10 @@ const NAV_GROUPS = [
     items: [
       { route: '/whitespace',    label: 'Whitespace',     icon: '◇', match: /^\/whitespace/ },
       { route: '/sectors',       label: 'Sectors',        icon: '⊞', match: /^\/sector/ },
-      { route: '/',              label: 'Companies',      icon: '☷', anchor: 'filter-section' },
-      { route: '/',              label: 'Geo Atlas',      icon: '◈', anchor: 'map-container' },
-      { route: '/',              label: 'Analytics',      icon: '▤', anchor: 'charts-section' },
-      { route: '/',              label: 'Recommendations',icon: '✦', anchor: 'recommendation-section' },
+      { route: '/directory',     label: 'Directory',      icon: '▦', match: /^\/directory/ },
+      { route: '/companies',     label: 'Companies & Geo Atlas', icon: '◈', match: /^\/companies/ },
+      { route: '/analytics',     label: 'Analytics',      icon: '▤', match: /^\/analytics/ },
+      { route: '/recommendations', label: 'Recommendations', icon: '✦', match: /^\/recommendations/ },
     ],
   },
   {
@@ -93,10 +93,10 @@ function render() {
   return h('div', { class: 'sidebar' }, [
     h('div', { class: 'sidebar-head' }, [
       h('div', { class: 'sidebar-brand' }, [
-        h('div', { class: 'brand-mark' }, 'E'),
+        h('div', { class: 'brand-mark' }, 'C'),
         h('div', { class: 'brand-text' }, [
-          h('div', { class: 'brand-title' }, 'ESDS Atlas'),
-          h('div', { class: 'brand-sub'   }, 'BFSI Geo Intel'),
+          h('div', { class: 'brand-title' }, 'ChanakyaIQ'),
+          h('div', { class: 'brand-sub', title: 'Intelligence that closes deals.' }, 'Intelligence that closes deals.'),
         ]),
       ]),
       h('button', {
@@ -112,46 +112,46 @@ function render() {
   ]);
 }
 
+// Shows the real logged-in user (authClient.js) — not identity.js's fake
+// roster, which stays in use everywhere else (territory ownership, notes
+// authorship, Digest/Homepage greetings) as a separate, pre-existing
+// "workspace persona" feature unrelated to real login. The dropdown's
+// only action is logging out, replacing the old "switch fake user" list.
 function renderUserSwitcher() {
-  const current = identity.current();
+  const user = currentUser();
   const wrap = h('div', { class: 'sidebar-foot user-switcher', id: 'sw-user-switcher' });
 
   const trigger = h('button', {
     class: 'user-switcher-trigger',
-    'aria-haspopup': 'listbox',
+    'aria-haspopup': 'menu',
     'aria-expanded': 'false',
-    'aria-label': 'Switch active user',
+    'aria-label': 'Account menu',
   }, [
-    h('div', { class: 'user-avatar', style: `background:${current?.color || '#6366F1'}22;color:${current?.color || '#818CF8'}` }, current?.initials || 'U'),
+    h('div', { class: 'user-avatar' }, user?.initials || '·'),
     h('div', { class: 'user-meta' }, [
-      h('div', { class: 'user-name' }, current?.name || 'No user'),
-      h('div', { class: 'user-role' }, current?.role || ''),
+      h('div', { class: 'user-name' }, user?.name || 'Not signed in'),
+      h('div', { class: 'user-role' }, user?.role || ''),
     ]),
     h('span', { class: 'user-chevron', 'aria-hidden': 'true' }, '⌄'),
   ]);
 
-  const menu = h('div', { class: 'user-switcher-menu', role: 'listbox', hidden: '' });
-  for (const u of identity.roster()) {
-    const item = h('button', {
-      class: 'user-switcher-item' + (u.id === current?.id ? ' active' : ''),
-      role: 'option',
-      'data-user-id': u.id,
-      'aria-selected': u.id === current?.id ? 'true' : 'false',
-    }, [
-      h('div', { class: 'user-switcher-avatar', style: `background:${u.color}22;color:${u.color}` }, u.initials),
-      h('div', { class: 'user-switcher-info' }, [
-        h('div', { class: 'user-switcher-name' }, u.name),
-        h('div', { class: 'user-switcher-role' }, u.role),
-      ]),
-    ]);
-    item.addEventListener('click', () => {
-      identity.setCurrent(u.id);
-      wrap.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
-      menu.hidden = true;
-    });
-    menu.appendChild(item);
-  }
+  const menu = h('div', { class: 'user-switcher-menu', role: 'menu', hidden: '' });
+  const logoutItem = h('button', {
+    class: 'user-switcher-item',
+    role: 'menuitem',
+  }, [
+    h('div', { class: 'user-switcher-avatar', style: 'background:var(--surface-3);color:var(--text-muted)' }, '⏻'),
+    h('div', { class: 'user-switcher-info' }, [
+      h('div', { class: 'user-switcher-name' }, 'Log out'),
+    ]),
+  ]);
+  logoutItem.addEventListener('click', () => {
+    wrap.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+    logout();
+  });
+  menu.appendChild(logoutItem);
 
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -194,8 +194,10 @@ export const sidebar = {
     mount(target, render());
     // Sync active state whenever route changes
     bus.on('route:change', ({ path }) => updateActive(path || '/'));
-    // Re-render the user switcher when the user changes
-    bus.on('identity:change', () => refreshUserSwitcher());
+    // Re-render the user block once the real logged-in user is known —
+    // sidebar mounts before dashboard.js's auth check resolves, so the
+    // trigger initially shows "Not signed in" until this fires.
+    bus.on('auth:change', () => refreshUserSwitcher());
     // Initial sync
     updateActive(location.hash.slice(1) || '/');
   },

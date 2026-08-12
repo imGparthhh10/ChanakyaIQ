@@ -22,14 +22,16 @@ import { DataCache }       from './cache.js';
 import { aggregateBranches, attachBranchProfiles } from './branches.js';
 import { loadKarnataka } from './karnataka.js';
 import { loadGujarat } from './gujarat.js';
+import { authFetch } from './authClient.js';
+import { API_BASE } from './apiBase.js';
 
 // Flip to true to roll back to the in-browser Excel pipeline.
 const USE_LEGACY_EXCEL_PIPELINE = false;
 
-// Exported so pages can call other endpoints directly (e.g. Company 360's
-// live GET /organizations/:id/icp fetch for qualification reasons, which
-// aren't in the bulk GET /organizations payload). No pipeline behavior change.
-export const API_BASE = 'http://localhost:4000/api';
+// Re-exported so existing `import { API_BASE } from '../data/data.js'`
+// call sites elsewhere don't need to change — see apiBase.js for why the
+// value itself lives in its own module.
+export { API_BASE };
 
 const EXCEL_FILES = [
   'data/BFSI_Master_Database.xlsx',
@@ -55,11 +57,11 @@ async function runPipelineFromApi() {
   emitStatus('fetch', { message: 'Loading organizations from API…', step: 1, totalSteps: 2 });
 
   const [valid, branches] = await Promise.all([
-    fetch(`${API_BASE}/organizations`).then((r) => {
+    authFetch(`${API_BASE}/organizations`).then((r) => {
       if (!r.ok) throw new Error(`GET /organizations HTTP ${r.status}`);
       return r.json();
     }),
-    fetch(`${API_BASE}/branches`).then((r) => {
+    authFetch(`${API_BASE}/branches`).then((r) => {
       if (!r.ok) throw new Error(`GET /branches HTTP ${r.status}`);
       return r.json();
     }),
