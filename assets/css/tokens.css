@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   ESDS BFSI Geo Intelligence Dashboard — Design Tokens
+   ChanakyaIQ — Design Tokens
    Single source of truth for colors, spacing, radii, shadows,
    typography, transitions. Theme-aware via [data-theme] attr.
    ══════════════════════════════════════════════════════════════ */
@@ -133,6 +133,7 @@
   --bg-2:          #0A1020;
   --bg-3:          #0E1629;
   --surface:       #111827;
+  --surface-1:     #111827; /* alias for --surface — 52 call sites across dashboard.css reference --surface-1, which was never actually defined (a naming gap, not a distinct color) */
   --surface-2:     #1A2540;
   --surface-3:     #1E2D4A;
 
@@ -197,6 +198,7 @@
   --bg-2:          #EEF1F8;
   --bg-3:          #E6EBF4;
   --surface:       #FFFFFF;
+  --surface-1:     #FFFFFF; /* alias for --surface — see dark theme block for why */
   --surface-2:     #F8FAFD;
   --surface-3:     #EEF2F9;
 

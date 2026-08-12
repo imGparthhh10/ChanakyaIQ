@@ -48,14 +48,6 @@
   gap: var(--sp-6);
 }
 
-/* Dashboard grid (Map + Analytics) */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  gap: var(--sp-6);
-  align-items: start;
-}
-
 /* ── Footer ── */
 .footer-root {
   padding: var(--sp-5) var(--sp-6);
