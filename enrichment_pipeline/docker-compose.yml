@@ -1,0 +1,193 @@
+# Company/bank financial + IT-spend enrichment pipeline.
+#
+#   docker compose up --build         # start everything (seed_loader runs
+#                                      # once and exits; the rest keep running)
+#   docker compose logs -f logger     # the single auditable timeline
+#   curl http://localhost:8080/status # orchestrator queue/health snapshot
+#   docker compose down               # stop everything, keep data (named volume)
+#   docker compose down -v            # stop + DELETE the postgres volume
+#
+# See README.md for the full topology diagram and design notes.
+
+services:
+  # -------------------------------------------------------------- #
+  # Infrastructure
+  # -------------------------------------------------------------- #
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5544}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # -------------------------------------------------------------- #
+  # Pipeline stages -- each its own container, wired only via Redis
+  # Streams (shared/queue_client.py). No service calls another
+  # service's code or HTTP API directly.
+  # -------------------------------------------------------------- #
+
+  seed_loader:
+    build:
+      context: .
+      dockerfile: services/seed_loader/Dockerfile
+    restart: "no"  # one-shot: loads data/input/*, pushes jobs, exits
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      INPUT_DIR: /data/input
+      DEFAULT_ENTITY_TYPE: ${DEFAULT_ENTITY_TYPE:-bank}
+      DEFAULT_SECTOR: ${DEFAULT_SECTOR:-BFSI}
+      FORCE_RESEED: ${FORCE_RESEED:-false}
+    volumes:
+      - ./data/input:/data/input:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  crawler:
+    build:
+      context: .
+      dockerfile: services/crawler/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      RAW_DATA_DIR: /data/raw
+      CRAWLER_BATCH_SIZE: ${CRAWLER_BATCH_SIZE:-5}
+      MAX_DOCUMENTS_PER_ENTITY: ${MAX_DOCUMENTS_PER_ENTITY:-6}
+      MAX_QUERIES_PER_ENTITY: ${MAX_QUERIES_PER_ENTITY:-6}
+      MAX_RESULTS_PER_QUERY: ${MAX_RESULTS_PER_QUERY:-5}
+      GOOGLE_CSE_API_KEY: ${GOOGLE_CSE_API_KEY:-}
+      GOOGLE_CSE_ID: ${GOOGLE_CSE_ID:-}
+      BING_SEARCH_API_KEY: ${BING_SEARCH_API_KEY:-}
+    volumes:
+      - ./data/raw:/data/raw
+    shm_size: "1gb"  # headless Firefox wants more than Docker's tiny default /dev/shm
+    depends_on:
+      redis:
+        condition: service_healthy
+      seed_loader:
+        condition: service_completed_successfully
+
+  translator:
+    build:
+      context: .
+      dockerfile: services/translator/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      TRANSLATOR_BATCH_SIZE: ${TRANSLATOR_BATCH_SIZE:-3}
+      TRANSLATION_ENABLED: ${TRANSLATION_ENABLED:-true}
+    volumes:
+      - ./data/raw:/data/raw
+      - indictrans_cache:/root/.cache/huggingface  # cache the model download across restarts
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  extractor:
+    build:
+      context: .
+      dockerfile: services/extractor/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      EXTRACTOR_BATCH_SIZE: ${EXTRACTOR_BATCH_SIZE:-5}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  icp_scorer:
+    build:
+      context: .
+      dockerfile: services/icp_scorer/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      ICP_SCORER_BATCH_SIZE: ${ICP_SCORER_BATCH_SIZE:-10}
+      SCORING_CONFIG_PATH: ${SCORING_CONFIG_PATH:-/app/config/scoring_rules.yaml}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  db_writer:
+    build:
+      context: .
+      dockerfile: services/db_writer/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      INPUT_DIR: /data/input
+      OUTPUT_DIR: /data/output
+      DB_WRITER_BATCH_SIZE: ${DB_WRITER_BATCH_SIZE:-10}
+      OVERWRITE_EXISTING: ${OVERWRITE_EXISTING:-false}
+    volumes:
+      - ./data/input:/data/input:ro
+      - ./data/output:/data/output
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  logger:
+    build:
+      context: .
+      dockerfile: services/logger/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      LOG_OUTPUT_DIR: /data/logs
+    volumes:
+      - ./data/logs:/data/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      ORCH_SWEEP_INTERVAL_S: ${ORCH_SWEEP_INTERVAL_S:-20}
+      ORCH_STUCK_IDLE_MS: ${ORCH_STUCK_IDLE_MS:-120000}
+      ORCH_MAX_RETRIES: ${ORCH_MAX_RETRIES:-3}
+    # Container always listens on 8080 internally (services/orchestrator/main.py
+    # hardcodes this to match the Dockerfile's EXPOSE) -- only the host
+    # side is configurable, so a host port conflict never requires
+    # touching the app itself.
+    ports:
+      - "${ORCH_STATUS_PORT:-8080}:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+    name: enrichment_redis_data
+  postgres_data:
+    name: enrichment_postgres_data
+  indictrans_cache:
+    name: enrichment_indictrans_cache

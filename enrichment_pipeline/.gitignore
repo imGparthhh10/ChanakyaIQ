@@ -1,0 +1,14 @@
+# Secrets -- never committed
+.env
+
+# Generated at runtime -- not source
+data/raw/
+data/output/
+data/logs/
+
+# Keep the seed input CSV/XLSX you drop in data/input/, but not junk files
+data/input/.DS_Store
+
+__pycache__/
+*.pyc
+.pytest_cache/

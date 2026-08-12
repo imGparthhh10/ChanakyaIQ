@@ -1,0 +1,52 @@
+# Configurable, rule-based ICP (Ideal Customer Profile) scoring criteria.
+# Edit this file (and restart the icp_scorer container) to retune scoring
+# without touching any code -- rules.py reads it at container startup.
+#
+# Every ExtractedRecord is scored against every rule below; the points
+# earned from all satisfied rules are summed into `icp_score`. A record
+# qualifies (moves on to db_writer) if icp_score >= qualification_threshold,
+# otherwise it is rejected and logged with the specific reason(s).
+
+qualification_threshold: 40
+
+rules:
+  - id: any_it_related_spend_disclosed
+    description: >
+      At least one of IT / Cybersecurity / Cloud / Data Centre / Digital
+      CapEx spend is a real, sourced figure (not "N/A"). This is the
+      single strongest positive signal -- it means the entity's own
+      disclosures already talk about technology investment.
+    points: 30
+
+  - id: revenue_disclosed_and_scoped
+    description: >
+      Revenue is disclosed and explicitly scoped to India or to the
+      target state (a global/unscoped figure never counts here).
+    points: 20
+
+  - id: revenue_above_minimum
+    description: >
+      Revenue meets or exceeds minimum_revenue_inr_cr -- a very small
+      entity is unlikely to have a meaningful IT/infrastructure budget.
+    points: 15
+    minimum_revenue_inr_cr: 25
+
+  - id: no_incumbent_vendor_mentioned
+    description: >
+      No known cloud/data-centre/cybersecurity vendor was found
+      mentioned anywhere in the entity's fetched source text -- read as
+      a "white space" opportunity signal, not proof of an actual gap.
+    points: 15
+
+  - id: state_match
+    description: >
+      The state found in the extracted evidence matches the seed input
+      state (cross-checks that we really were looking at the right
+      entity's disclosures).
+    points: 10
+
+  - id: scale_signal_present
+    description: >
+      Any organizational scale signal (branch count or employee count)
+      was found in the source text.
+    points: 10
