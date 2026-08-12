@@ -227,7 +227,7 @@ export async function mountSector(container, params) {
   }
 
   const s = computeSector(records);
-  document.title = `${sectorKey} · Sector Deep-Dive · ESDS BOIP`;
+  document.title = `${sectorKey} · Sector Deep-Dive · ChanakyaIQ`;
 
   container.innerHTML = `
     <div class="page-container sec-page">
@@ -284,7 +284,7 @@ export async function mountSector(container, params) {
     </div>`;
 
   const cleanup = new CleanupRegistry();
-  return () => { cleanup.dispose(); document.title = 'ESDS BFSI Geo Intelligence Dashboard'; };
+  return () => { cleanup.dispose(); document.title = 'ChanakyaIQ'; };
 }
 
 function signalTile(label, count, total, color) {

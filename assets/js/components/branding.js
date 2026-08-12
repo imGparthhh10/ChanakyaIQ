@@ -21,7 +21,7 @@ let _releaseFocus = null;
 const ATTRIBUTION = {
   brand:     'Parth Analytics',
   tagline:   'Enterprise Data Analytics & AI Solutions',
-  project:   'ESDS BFSI Geo Intelligence Dashboard',
+  project:   'ChanakyaIQ',
   developer: 'Parth Ghongane',
   role:      'AI & Marketing Intern',
   org:       'ESDS Software Solution Ltd.',

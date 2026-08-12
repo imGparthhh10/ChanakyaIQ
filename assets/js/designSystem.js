@@ -1,6 +1,6 @@
 /**
- * designSystem.js — Barrel export for the complete ESDS
- * BFSI Geo Intelligence Design System.
+ * designSystem.js — Barrel export for the complete ChanakyaIQ
+ * Design System.
  *
  * Import individual components:
  *   import { toast } from './components/toast.js';

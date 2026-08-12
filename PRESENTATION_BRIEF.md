@@ -1,4 +1,4 @@
-# ESDS BOIP — Presentation Brief
+# ChanakyaIQ — Presentation Brief
 
 **Bharat Opportunity Intelligence Platform** · Enterprise Market Intelligence for BFSI
 
@@ -8,7 +8,7 @@ Use this document to walk through the dashboard. Every section tells you *what t
 
 ## 1 · Elevator (30-second version)
 
-> ESDS BOIP is a purpose-built market intelligence platform that reads 20,000+ BFSI company records from a single source of truth, ranks the entire universe by ESDS opportunity, and gives every persona in the go-to-market team — from a BDR to the CRO — the exact view they need to act on it. It's not a dashboard. It's a workspace.
+> ChanakyaIQ is a purpose-built market intelligence platform that reads 20,000+ BFSI company records from a single source of truth, ranks the entire universe by ESDS opportunity, and gives every persona in the go-to-market team — from a BDR to the CRO — the exact view they need to act on it. It's not a dashboard. It's a workspace.
 
 ## 2 · Why it's enterprise-grade (5 differentiators)
 

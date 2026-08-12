@@ -63,7 +63,7 @@ function exportCSV(records) {
   const rows = recordsToRows(records);
   const csv  = rowsToCSV(rows);
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-  downloadBlob(blob, timestampedName('ESDS_BFSI_Filtered_Report', 'csv'));
+  downloadBlob(blob, timestampedName('ChanakyaIQ_Filtered_Report', 'csv'));
   showToast(`CSV exported — ${records.length} companies`);
 }
 
@@ -88,7 +88,7 @@ async function exportExcel(records) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'BFSI Companies');
 
-  XLSX.writeFile(wb, timestampedName('ESDS_BFSI_Filtered_Report', 'xlsx'));
+  XLSX.writeFile(wb, timestampedName('ChanakyaIQ_Filtered_Report', 'xlsx'));
   showToast(`Excel exported — ${records.length} companies`);
 }
 
@@ -110,7 +110,7 @@ async function exportFilteredPDF(records) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('ESDS BFSI Geo Intelligence — Filtered Report', margin, 34);
+  doc.text('ChanakyaIQ — Filtered Report', margin, 34);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(`Generated ${new Date().toLocaleString('en-IN')} · ${records.length} companies`, margin, 48);
@@ -174,10 +174,10 @@ async function exportFilteredPDF(records) {
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.text(`Page ${p} of ${pageCount}`, pageW - margin - 60, doc.internal.pageSize.getHeight() - 16);
-    doc.text('ESDS BFSI Geo Intelligence Dashboard', margin, doc.internal.pageSize.getHeight() - 16);
+    doc.text('ChanakyaIQ', margin, doc.internal.pageSize.getHeight() - 16);
   }
 
-  doc.save(timestampedName('ESDS_BFSI_Filtered_Report', 'pdf'));
+  doc.save(timestampedName('ChanakyaIQ_Filtered_Report', 'pdf'));
   showToast(`PDF report exported — ${records.length} companies`);
 }
 
@@ -203,7 +203,7 @@ async function exportCompanyPDF(rec) {
   doc.setFont('helvetica', 'normal');
   doc.text([rec.category, rec.subSector, rec.state].filter(Boolean).join('  ·  '), margin, 62);
   doc.setFontSize(8);
-  doc.text(`ESDS BFSI Geo Intelligence Dashboard — Generated ${new Date().toLocaleString('en-IN')}`, margin, 78);
+  doc.text(`ChanakyaIQ — Generated ${new Date().toLocaleString('en-IN')}`, margin, 78);
 
   y = 118;
   doc.setTextColor(30, 41, 59);
@@ -276,9 +276,9 @@ async function exportCompanyPDF(rec) {
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text('ESDS BFSI Geo Intelligence Dashboard — Confidential', margin, doc.internal.pageSize.getHeight() - 20);
+  doc.text('ChanakyaIQ — Confidential', margin, doc.internal.pageSize.getHeight() - 20);
 
-  doc.save(timestampedName(`ESDS_Company_${(rec.companyName || 'Report').replace(/[^a-z0-9]+/gi, '_')}`, 'pdf'));
+  doc.save(timestampedName(`ChanakyaIQ_Company_${(rec.companyName || 'Report').replace(/[^a-z0-9]+/gi, '_')}`, 'pdf'));
   showToast(`Company report exported — ${rec.companyName}`);
 }
 
@@ -303,7 +303,7 @@ async function exportPNG(targetSelector = '#main') {
 
   canvas.toBlob((blob) => {
     if (blob) {
-      downloadBlob(blob, timestampedName('ESDS_BFSI_Dashboard_Snapshot', 'png'));
+      downloadBlob(blob, timestampedName('ChanakyaIQ_Dashboard_Snapshot', 'png'));
       showToast('Dashboard snapshot saved as PNG');
     }
   }, 'image/png');

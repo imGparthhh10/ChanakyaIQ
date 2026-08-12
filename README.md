@@ -1,4 +1,4 @@
-# ESDS BFSI Geo Intelligence Dashboard
+# ChanakyaIQ
 
 Enterprise market-intelligence dashboard for India's BFSI sector. Reads directly
 from the Master BFSI Excel workbooks, deduplicates + indexes 20,000+ company

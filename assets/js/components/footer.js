@@ -7,7 +7,7 @@ import { h, mount } from '../utils/dom.js';
 function render() {
   return h('div', { class: 'footer-inner' }, [
     h('div', { class: 'footer-meta' }, [
-      `© ${new Date().getFullYear()} ESDS Software Solution Ltd. · BFSI Geo Intelligence Dashboard`,
+      `© ${new Date().getFullYear()} ESDS Software Solution Ltd. · ChanakyaIQ`,
     ]),
     h('ul', { class: 'footer-links' }, [
       h('li', {}, [h('a', { href: '#privacy'  }, 'Privacy')]),
