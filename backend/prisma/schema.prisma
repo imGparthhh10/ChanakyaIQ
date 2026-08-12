@@ -307,6 +307,8 @@ model FinancialMetric {
   sourceDocumentId  String?          @map("source_document_id") @db.Uuid
   confidence        Decimal?         @db.Decimal(5, 2)
   extractedAt       DateTime         @default(now()) @map("extracted_at") @db.Timestamptz(6)
+  sourceCitation    String?          @map("source_citation")
+  sourceUrl         String?          @map("source_url")
   metricDefinition  MetricDefinition @relation(fields: [metricId], references: [metricId], onDelete: NoAction, onUpdate: NoAction)
   organization      Organization     @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
   document          Document?        @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_finmet_doc")
@@ -483,64 +485,101 @@ model OrganizationTag {
 }
 
 model Organization {
-  organizationId           String                    @id @default(dbgenerated("uuid_generate_v4()")) @map("organization_id") @db.Uuid
-  legalName                String                    @map("legal_name")
-  displayName              String?                   @map("display_name")
-  domain                   String?                   @unique
-  sectorId                 Int?                      @map("sector_id") @db.SmallInt
-  subsectorId              Int?                      @map("subsector_id") @db.SmallInt
-  ownershipType            OwnershipType?            @map("ownership_type")
-  incorporationYear        Int?                      @map("incorporation_year") @db.SmallInt
-  cinNumber                String?                   @map("cin_number")
-  status                   OrgStatus                 @default(NEW)
-  sourceOfEntry            String?                   @map("source_of_entry")
-  isDuplicateOf            String?                   @map("is_duplicate_of") @db.Uuid
-  icpScore                 Decimal?                  @map("icp_score") @db.Decimal(5, 2)
-  opportunityTier          OpportunityTier?          @map("opportunity_tier")
-  confidenceScore          Decimal?                  @map("confidence_score") @db.Decimal(5, 2)
-  createdBy                String?                   @map("created_by") @db.Uuid
-  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
-  addresses                Address[]
-  branches                 Branch[]
-  changeHistories          ChangeHistory[]
-  contactProfile           ContactProfile?
-  contacts                 Contact[]
-  crawlJobs                CrawlJob[]
-  crawlSources             CrawlSource[]
-  documents                Document[]
-  enrichmentJobs           EnrichmentJob[]
-  entityResolutions        EntityResolution[]
-  errorLogs                ErrorLog[]
-  financialMetrics         FinancialMetric[]
-  financialProfile         FinancialProfile?
-  jobHistories             JobHistory[]
-  leadership               Leadership[]
-  leadershipProfile        LeadershipProfile?
-  llmProfiles              LlmProfile[]
-  newsArticles             NewsArticle[]
-  organizationAliases      OrganizationAlias[]
-  organizationProfile      OrganizationProfile?
-  organizationTags         OrganizationTag[]
-  user                     User?                     @relation(fields: [createdBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
-  organization             Organization?             @relation("organizationsToorganizations", fields: [isDuplicateOf], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
-  organizations            Organization[]            @relation("organizationsToorganizations")
-  sector                   Sector?                   @relation(fields: [sectorId], references: [sectorId], onDelete: NoAction, onUpdate: NoAction)
-  subsector                Subsector?                @relation(fields: [subsectorId], references: [subsectorId], onDelete: NoAction, onUpdate: NoAction)
-  processingLogs           ProcessingLog[]
-  qualificationResults     QualificationResult[]
-  scoreHistories           ScoreHistory[]
-  technologyMetrics        TechnologyMetric[]
-  technologyProfileSummary TechnologyProfileSummary?
-  technologyProfiles       TechnologyProfile[]
-  tierHistories            TierHistory[]
-  timelineEvents           TimelineEvent[]
+  organizationId               String                       @id @default(dbgenerated("uuid_generate_v4()")) @map("organization_id") @db.Uuid
+  legalName                    String                       @map("legal_name")
+  displayName                  String?                      @map("display_name")
+  domain                       String?                      @unique
+  sectorId                     Int?                         @map("sector_id") @db.SmallInt
+  subsectorId                  Int?                         @map("subsector_id") @db.SmallInt
+  ownershipType                OwnershipType?               @map("ownership_type")
+  incorporationYear            Int?                         @map("incorporation_year") @db.SmallInt
+  cinNumber                    String?                      @map("cin_number")
+  status                       OrgStatus                    @default(NEW)
+  sourceOfEntry                String?                      @map("source_of_entry")
+  isDuplicateOf                String?                      @map("is_duplicate_of") @db.Uuid
+  icpScore                     Decimal?                     @map("icp_score") @db.Decimal(5, 2)
+  opportunityTier              OpportunityTier?             @map("opportunity_tier")
+  confidenceScore              Decimal?                     @map("confidence_score") @db.Decimal(5, 2)
+  createdBy                    String?                      @map("created_by") @db.Uuid
+  createdAt                    DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime                     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  businessIntentScore          Int                          @default(0) @map("business_intent_score")
+  businessIntentClassification BusinessIntentClassification @default(Not_Scored) @map("business_intent_classification")
+  lettersMatched               String[]                     @default([]) @map("letters_matched")
+  finalPriority                String?                      @map("final_priority")
+  businessIntentLastScoredAt   DateTime?                    @map("business_intent_last_scored_at") @db.Timestamptz(6)
+  addresses                    Address[]
+  branches                     Branch[]
+  businessIntentRemovalLogs    BusinessIntentRemovalLog[]
+  businessIntentScoreHistories BusinessIntentScoreHistory[]
+  changeHistories              ChangeHistory[]
+  contactProfile               ContactProfile?
+  contacts                     Contact[]
+  crawlJobs                    CrawlJob[]
+  crawlSources                 CrawlSource[]
+  documents                    Document[]
+  enrichmentJobs               EnrichmentJob[]
+  entityResolutions            EntityResolution[]
+  errorLogs                    ErrorLog[]
+  financialMetrics             FinancialMetric[]
+  financialProfile             FinancialProfile?
+  jobHistories                 JobHistory[]
+  leadership                   Leadership[]
+  leadershipProfile            LeadershipProfile?
+  llmProfiles                  LlmProfile[]
+  newsArticles                 NewsArticle[]
+  organizationAliases          OrganizationAlias[]
+  organizationProfile          OrganizationProfile?
+  organizationTags             OrganizationTag[]
+  user                         User?                        @relation(fields: [createdBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  organization                 Organization?                @relation("organizationsToorganizations", fields: [isDuplicateOf], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+  organizations                Organization[]               @relation("organizationsToorganizations")
+  sector                       Sector?                      @relation(fields: [sectorId], references: [sectorId], onDelete: NoAction, onUpdate: NoAction)
+  subsector                    Subsector?                   @relation(fields: [subsectorId], references: [subsectorId], onDelete: NoAction, onUpdate: NoAction)
+  processingLogs               ProcessingLog[]
+  qualificationResults         QualificationResult[]
+  scoreHistories               ScoreHistory[]
+  technologyMetrics            TechnologyMetric[]
+  technologyProfileSummary     TechnologyProfileSummary?
+  technologyProfiles           TechnologyProfile[]
+  tierHistories                TierHistory[]
+  timelineEvents               TimelineEvent[]
 
-  @@index([legalName(ops: raw("ginTrgmOps"))], map: "idx_org_name_trgm", type: Gin)
+  @@index([legalName(ops: raw("gin_trgm_ops"))], map: "idx_org_name_trgm", type: Gin)
   @@index([icpScore(sort: Desc)], map: "idx_org_score")
   @@index([sectorId, subsectorId], map: "idx_org_sector")
   @@index([status], map: "idx_org_status")
+  @@index([businessIntentClassification], map: "idx_org_business_intent_classification")
   @@map("organizations")
+}
+
+model BusinessIntentScoreHistory {
+  businessIntentScoreHistoryId String                       @id @default(dbgenerated("uuid_generate_v4()")) @map("business_intent_score_history_id") @db.Uuid
+  organizationId               String                       @map("organization_id") @db.Uuid
+  score                        Int
+  classification               BusinessIntentClassification
+  lettersMatched               String[]                     @default([]) @map("letters_matched")
+  scoredAt                     DateTime                     @default(now()) @map("scored_at") @db.Timestamptz(6)
+  organization                 Organization                 @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, scoredAt(sort: Desc)], map: "idx_bi_score_history_org_time")
+  @@map("business_intent_score_history")
+}
+
+model BusinessIntentRemovalLog {
+  businessIntentRemovalLogId   String                       @id @default(dbgenerated("uuid_generate_v4()")) @map("business_intent_removal_log_id") @db.Uuid
+  organizationId               String                       @map("organization_id") @db.Uuid
+  organizationName             String                       @map("organization_name")
+  businessIntentScore          Int                          @map("business_intent_score")
+  businessIntentClassification BusinessIntentClassification @map("business_intent_classification")
+  icpScore                     Decimal?                     @map("icp_score") @db.Decimal(5, 2)
+  icpTier                      OpportunityTier?             @map("icp_tier")
+  reason                       String
+  removedAt                    DateTime                     @default(now()) @map("removed_at") @db.Timestamptz(6)
+  organization                 Organization                 @relation(fields: [organizationId], references: [organizationId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, removedAt(sort: Desc)], map: "idx_bi_removal_log_org")
+  @@map("business_intent_removal_log")
 }
 
 model Permission {
@@ -630,8 +669,10 @@ model RuleGroup {
   groupName            String                @map("group_name")
   matchLogic           String                @default("ANY") @map("match_logic")
   isActive             Boolean               @default(true) @map("is_active")
+  sectorId             Int?                  @map("sector_id") @db.SmallInt
   qualificationResults QualificationResult[]
   qualificationRules   QualificationRule[]
+  sector               Sector?               @relation(fields: [sectorId], references: [sectorId], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("rule_groups")
 }
@@ -693,6 +734,7 @@ model Sector {
   sectorName    String         @unique @map("sector_name")
   description   String?
   organizations Organization[]
+  ruleGroups    RuleGroup[]
   scoreModels   ScoreModel[]
   subsectors    Subsector[]
 
@@ -758,6 +800,8 @@ model TechnologyMetric {
   sourceDocumentId   String?          @map("source_document_id") @db.Uuid
   confidence         Decimal?         @db.Decimal(5, 2)
   extractedAt        DateTime         @default(now()) @map("extracted_at") @db.Timestamptz(6)
+  sourceCitation     String?          @map("source_citation")
+  sourceUrl          String?          @map("source_url")
   document           Document?        @relation(fields: [sourceDocumentId], references: [documentId], onDelete: NoAction, onUpdate: NoAction, map: "fk_techmet_doc")
   metricDefinition   MetricDefinition @relation(fields: [metricId], references: [metricId], onDelete: NoAction, onUpdate: NoAction)
   organization       Organization     @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade, onUpdate: NoAction)
@@ -853,6 +897,15 @@ model User {
   role           Role            @relation(fields: [roleId], references: [roleId], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("users")
+}
+
+enum BusinessIntentClassification {
+  Qualified
+  Watch
+  Not_Qualified @map("Not Qualified")
+  Not_Scored    @map("Not Scored")
+
+  @@map("business_intent_classification")
 }
 
 enum ContactChannel {

@@ -10,6 +10,7 @@ const INCLUDE = {
   technologyProfiles: true,
   organizationTags: { include: { opportunityTag: true } },
   qualificationResults: { take: 1, orderBy: { evaluatedAt: 'desc' } as const },
+  contacts: true,
 } as const;
 
 export class OrganizationsRepository {

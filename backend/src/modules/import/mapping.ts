@@ -17,14 +17,20 @@ const technology = new TechnologyRepository();
 const stateCache = new Map<string, number>();
 const cityCache = new Map<string, number>();
 const subsectorCache = new Map<string, number>();
-let bfsiSectorId: number | null = null;
+const sectorIdCache = new Map<string, number>();
 
+async function getSectorId(sectorName: string): Promise<number> {
+  const cached = sectorIdCache.get(sectorName);
+  if (cached != null) return cached;
+  const s = await prisma.sector.findUnique({ where: { sectorName } });
+  if (!s) throw new Error(`Sector "${sectorName}" missing from seed data`);
+  sectorIdCache.set(sectorName, s.sectorId);
+  return s.sectorId;
+}
+
+/** Back-compat name for the BFSI-only callers below. */
 async function getBfsiSectorId(): Promise<number> {
-  if (bfsiSectorId != null) return bfsiSectorId;
-  const s = await prisma.sector.findUnique({ where: { sectorName: 'BFSI' } });
-  if (!s) throw new Error('BFSI sector missing from seed data');
-  bfsiSectorId = s.sectorId;
-  return bfsiSectorId;
+  return getSectorId('BFSI');
 }
 
 export async function resolveState(stateName: string | null | undefined, region: string | null | undefined): Promise<number | null> {
@@ -49,13 +55,13 @@ export async function resolveCity(cityName: string | null | undefined, stateId: 
 /** Lookup-or-create against subsectors — the taxonomy is auto-extended per
  *  the plan's instruction ("sector_id/subsector_id via lookup-or-create"),
  *  not restricted to the 11 rows eip_schema.sql happens to pre-seed. */
-async function resolveSubsector(categoryName: string | null | undefined): Promise<number | null> {
+async function resolveSubsector(categoryName: string | null | undefined, sectorId: number): Promise<number | null> {
   if (!categoryName) return null;
-  if (subsectorCache.has(categoryName)) return subsectorCache.get(categoryName)!;
-  const sectorId = await getBfsiSectorId();
+  const cacheKey = `${sectorId}:${categoryName}`;
+  if (subsectorCache.has(cacheKey)) return subsectorCache.get(cacheKey)!;
   const existing = await prisma.subsector.findFirst({ where: { sectorId, subsectorName: categoryName } });
   const sub = existing ?? (await prisma.subsector.create({ data: { sectorId, subsectorName: categoryName } }));
-  subsectorCache.set(categoryName, sub.subsectorId);
+  subsectorCache.set(cacheKey, sub.subsectorId);
   return sub.subsectorId;
 }
 
@@ -78,19 +84,23 @@ export interface ImportRowResult {
 }
 
 /** Maps + upserts one canonical record (from parser.js/validator.js output,
- *  or the Karnataka/Gujarat loaders) into the full set of Postgres tables. */
-export async function upsertOrganizationFromRecord(rec: any, index: DedupeIndex): Promise<ImportRowResult> {
+ *  or the Karnataka/Gujarat/Industrial Clusters/Govt Finance loaders) into
+ *  the full set of Postgres tables. `sectorName` defaults to 'BFSI' so
+ *  every pre-existing caller (generic files, Karnataka, Gujarat) keeps its
+ *  original behavior unchanged. */
+export async function upsertOrganizationFromRecord(rec: any, index: DedupeIndex, sectorName = 'BFSI', allowFuzzy = true): Promise<ImportRowResult> {
   const companyName: string = rec.companyName;
   try {
-    const existingId = await findExistingOrgId(index, companyName, rec.state || null);
-    const subsectorId = await resolveSubsector(rec.category || rec.subSector || null);
+    const existingId = await findExistingOrgId(index, companyName, rec.state || null, allowFuzzy);
+    const sectorId = await getSectorId(sectorName);
+    const subsectorId = await resolveSubsector(rec.category || rec.subSector || null, sectorId);
     const stateId = await resolveState(rec.state || null, rec.region || null);
     const cityId = await resolveCity(rec.hqCity || null, stateId);
     const ownershipType = mapOwnership(rec);
 
     const orgData = {
       legalName: companyName,
-      sectorId: await getBfsiSectorId(),
+      sectorId,
       subsectorId,
       ownershipType,
       incorporationYear: rec.yearFounded ?? null,
@@ -179,6 +189,17 @@ export async function upsertOrganizationFromRecord(rec: any, index: DedupeIndex)
       const value = rec[field];
       if (!value) continue;
       await technology.upsertProfile(organizationId, category, String(value));
+    }
+
+    // Free-text context that doesn't have a structured column of its own
+    // (cluster Notes, Parent Ministry/Department Type) -- organization_profiles.summary,
+    // per the plan's "propose where these actually belong" instruction.
+    if (rec.profileSummary) {
+      await prisma.organizationProfile.upsert({
+        where: { organizationId },
+        create: { organizationId, summary: rec.profileSummary },
+        update: { summary: rec.profileSummary },
+      });
     }
 
     return { outcome, organizationId, companyName };

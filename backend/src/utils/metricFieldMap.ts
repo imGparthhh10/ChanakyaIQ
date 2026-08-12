@@ -20,6 +20,7 @@ export const FINANCIAL_METRIC_FIELDS: Record<string, string> = {
   dealSize: 'deal_size_est_cr',
   dataConfidenceScore: 'data_confidence_score',
   govtShareholding: 'govt_shareholding_pct',
+  allocatedBudget: 'allocated_budget',
 };
 
 /** Stored in technology_metrics. */
@@ -57,4 +58,5 @@ export const METRIC_DISPLAY_NAMES: Record<string, string> = {
   cybersecurity_spend: 'Cybersecurity Spend',
   data_center_spend: 'Data Center Spend',
   ai_spend: 'AI Spend',
+  allocated_budget: 'Allocated Budget',
 };

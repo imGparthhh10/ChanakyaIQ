@@ -32,6 +32,8 @@ export class TechnologyRepository {
     sourceDocumentId: string | null = null,
     confidence: number | null = null,
     displayName = metricKey,
+    sourceCitation: string | null = null,
+    sourceUrl: string | null = null,
   ) {
     const def = await resolveMetricDefinition(metricKey, displayName, 'Technology');
     const existing = await prisma.technologyMetric.findFirst({
@@ -40,11 +42,11 @@ export class TechnologyRepository {
     if (existing) {
       return prisma.technologyMetric.update({
         where: { technologyMetricId: existing.technologyMetricId },
-        data: { value, sourceDocumentId, confidence },
+        data: { value, sourceDocumentId, confidence, sourceCitation, sourceUrl },
       });
     }
     return prisma.technologyMetric.create({
-      data: { organizationId, metricId: def.metricId, fiscalYear, value, sourceDocumentId, confidence },
+      data: { organizationId, metricId: def.metricId, fiscalYear, value, sourceDocumentId, confidence, sourceCitation, sourceUrl },
     });
   }
 

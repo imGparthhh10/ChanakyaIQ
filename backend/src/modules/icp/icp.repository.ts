@@ -1,6 +1,11 @@
 import { prisma } from '../../db';
 
 export class IcpRepository {
+  /** sectorId is nullable on both tables -- NULL means "applies to every
+   *  sector" (kept for forward compatibility); a set sectorId scopes a
+   *  rule group to only that sector's organizations. Without this, a
+   *  sector-specific rule group (e.g. Government's Allocated Budget rule)
+   *  would also run against every other sector's organizations. */
   getActiveRuleGroups() {
     return prisma.ruleGroup.findMany({
       where: { isActive: true },
@@ -24,6 +29,7 @@ export class IcpRepository {
         leadershipProfile: true,
         sector: true,
         subsector: true,
+        contacts: true,
       },
     });
   }
@@ -91,5 +97,64 @@ export class IcpRepository {
       prisma.organizationTag.deleteMany({ where: { organizationId } }),
       ...tagIds.map((tagId) => prisma.organizationTag.create({ data: { organizationId, tagId } })),
     ]);
+  }
+
+  /** Thresholds are DB-driven, not hardcoded anywhere in application code —
+   *  this is what makes them editable from the dashboard (Stage 1). */
+  listQualificationRules() {
+    return prisma.qualificationRule.findMany({
+      include: { metricDefinition: true, ruleGroup: true },
+      orderBy: { ruleId: 'asc' },
+    });
+  }
+
+  updateRuleThreshold(ruleId: string, thresholdValue: number) {
+    return prisma.qualificationRule.update({
+      where: { ruleId },
+      data: { thresholdValue },
+      include: { metricDefinition: true },
+    });
+  }
+
+  /** qualification_results is append-only (one row per org per rule group
+   *  per /icp/run) and unbounded -- latestForOrg() only ever reads the
+   *  newest row, so older ones are pure dead weight. Keeps the `keepPerOrg`
+   *  most recent rows per (organization, rule group) pair and deletes the
+   *  rest. Scoped by rule group, not just org, so this stays correct if an
+   *  org is ever evaluated against more than one rule group at once (not
+   *  the case today -- sectors are mutually exclusive -- but cheap to get
+   *  right now). Does NOT touch score_history/tier_history -- those are the
+   *  actual long-term trend record and are intentionally never pruned. */
+  async pruneQualificationHistory(keepPerOrg: number): Promise<number> {
+    const result = await prisma.$executeRaw`
+      DELETE FROM qualification_results
+      WHERE qualification_id IN (
+        SELECT qualification_id FROM (
+          SELECT qualification_id,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY organization_id, rule_group_id
+                   ORDER BY evaluated_at DESC
+                 ) AS rn
+          FROM qualification_results
+        ) ranked
+        WHERE rn > ${keepPerOrg}
+      )
+    `;
+    return Number(result);
+  }
+
+  /** Everything explainOpportunityTags() (tags.service.ts) needs to
+   *  re-derive *why* a tag fired, for one org on demand. */
+  orgForTagExplanation(organizationId: string) {
+    return prisma.organization.findUnique({
+      where: { organizationId },
+      include: {
+        financialMetrics: { include: { metricDefinition: true } },
+        technologyMetrics: { include: { metricDefinition: true } },
+        technologyProfiles: true,
+        sector: true,
+        subsector: true,
+      },
+    });
   }
 }

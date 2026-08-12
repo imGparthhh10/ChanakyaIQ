@@ -43,6 +43,8 @@ export class FinancialsRepository {
     sourceDocumentId: string | null = null,
     confidence: number | null = null,
     displayName = metricKey,
+    sourceCitation: string | null = null,
+    sourceUrl: string | null = null,
   ) {
     const def = await resolveMetricDefinition(metricKey, displayName, 'Financial');
     const existing = await prisma.financialMetric.findFirst({
@@ -51,11 +53,11 @@ export class FinancialsRepository {
     if (existing) {
       return prisma.financialMetric.update({
         where: { financialMetricId: existing.financialMetricId },
-        data: { value, sourceDocumentId, confidence },
+        data: { value, sourceDocumentId, confidence, sourceCitation, sourceUrl },
       });
     }
     return prisma.financialMetric.create({
-      data: { organizationId, metricId: def.metricId, fiscalYear, value, sourceDocumentId, confidence },
+      data: { organizationId, metricId: def.metricId, fiscalYear, value, sourceDocumentId, confidence, sourceCitation, sourceUrl },
     });
   }
 }

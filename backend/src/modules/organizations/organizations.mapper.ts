@@ -49,8 +49,17 @@ export function mapOrganization(org: any) {
     parentCompany: null,
     category: org.subsector?.subsectorName ?? org.sector?.sectorName ?? null,
     subSector: org.subsector?.subsectorName ?? null,
+    // Distinct from `category` (which falls back to subsector) — Stage 8's
+    // own sector-level filter. Real and generic, but a structural no-op
+    // today: all 297 imported orgs are sector_id=1 (BFSI).
+    sector: org.sector?.sectorName ?? null,
     ownership: org.ownershipType ? String(org.ownershipType).replace(/_/g, ' ') : null,
-    listedStatus: org.ownershipType === 'Public_Listed' ? 'Listed' : null,
+    // 3-state, not a binary guess: ownership_type's own taxonomy treats
+    // "Public Listed" as mutually exclusive with Private/Government/
+    // Cooperative/Foreign, so any other non-null value confidently means
+    // Unlisted — but 152 of 297 orgs (51%) have no ownership_type on file
+    // at all, and those stay "Unknown" rather than being assumed either way.
+    listedStatus: org.ownershipType === 'Public_Listed' ? 'Listed' : org.ownershipType != null ? 'Unlisted' : 'Unknown',
     stockSymbol: null,
     cin: org.cinNumber ?? null,
     website: org.domain ?? null,
@@ -73,6 +82,10 @@ export function mapOrganization(org: any) {
     aum: financials.aum ?? null,
     employeeCount: financials.employeeCount ?? null,
     branchCount: financials.branchCount ?? org._branchCount ?? null,
+    // Government-sector metric (Allocated Budget, Cr) -- null for every
+    // other sector, same convention as aum being null outside BFSI's AMC
+    // subsector.
+    allocatedBudget: financials.allocatedBudget ?? null,
     customerBase: null,
 
     // Leadership
@@ -82,6 +95,14 @@ export function mapOrganization(org: any) {
     cto: org.leadershipProfile?.ctoName ?? null,
     cfo: null,
     ciso: null,
+
+    // Contact Profile (ICP spec Stage 3F) — the contacts/contact_profiles
+    // tables are 100% empty database-wide (no Point-of-Contact/Email/Phone
+    // columns were ever mapped during import). Flagged, not fabricated —
+    // stays null for every org until real contact data exists.
+    pointOfContact: (org.contacts ?? []).find((c: any) => c.isPrimary)?.fullName ?? null,
+    contactEmail: (org.contacts ?? []).find((c: any) => c.channel === 'Email')?.value ?? null,
+    contactPhone: (org.contacts ?? []).find((c: any) => c.channel === 'Phone')?.value ?? null,
 
     // Technology spend (via metric_definitions)
     itSpend: technology.itSpend ?? null,
@@ -126,6 +147,17 @@ export function mapOrganization(org: any) {
     opportunityTier: org.opportunityTier ? String(org.opportunityTier).replace(/_/g, ' ') : null,
     isQualified: org.qualificationResults?.[0]?.isQualified ?? null,
     opportunityTags: (org.organizationTags ?? []).map((t: any) => t.opportunityTag.tagName),
+
+    // Business Intent Engine (see backend/src/modules/businessIntent/) —
+    // 'Not Scored' / score 0 until POST /business-intent/run has scored
+    // this org at least once. finalPriority is null until then too (it's
+    // only ever set alongside a real score).
+    businessIntentScore: org.businessIntentScore ?? 0,
+    businessIntentClassification: org.businessIntentClassification
+      ? String(org.businessIntentClassification).replace(/_/g, ' ')
+      : 'Not Scored',
+    lettersMatched: org.lettersMatched ?? [],
+    finalPriority: org.finalPriority ?? null,
 
     _source: 'postgres',
     _dedupeKey: normalizeForDedup(org.legalName),
