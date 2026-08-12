@@ -1,0 +1,23 @@
+# Secrets -- never committed, per-environment
+.env
+.env.docker
+docker/**/.env
+
+# Dependencies / build output
+node_modules/
+dist/
+backend/node_modules/
+backend/dist/
+
+# Python
+pipeline/.venv/
+pipeline/**/__pycache__/
+pipeline/data/documents/
+*.pyc
+
+# Logs
+*.log
+
+# Database backups -- kept on disk for recovery, not in git (can be large,
+# and may contain real business data)
+backups/
