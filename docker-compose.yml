@@ -1,0 +1,82 @@
+# ChanakyaIQ (formerly TRINETRA) EIP -- full stack.
+#
+#   docker compose up -d --build      # postgres + backend + frontend
+#   docker compose run --rm pipeline <cli-args>   # one-off pipeline runs
+#   docker compose logs -f backend
+#   docker compose down                # stop everything, keep data (named volume)
+#   docker compose down -v             # stop + DELETE the database volume (careful)
+#
+# Real data was migrated in from the previous portable (non-Docker)
+# Postgres install via pg_dump/pg_restore -- see scripts/migrate-data.sh
+# and backups/ for the dump this was restored from.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5434}:5432"
+    # PG18's official image changed convention: the volume mounts at
+    # /var/lib/postgresql (one level up from older images' .../data) --
+    # the image itself now manages a version-specific subdirectory under
+    # this mount, pg_ctlcluster-style. Mounting at .../data directly (the
+    # pre-18 convention) makes the image refuse to start.
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_HOST_PORT:-8080}:80"
+    depends_on:
+      - backend
+
+  # Not started by `docker compose up` (see the "tools" profile) -- the
+  # scraping/enrichment pipeline is a CLI, not a persistent service.
+  # Invoke with: docker compose run --rm pipeline <args>
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/pipeline/Dockerfile
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BACKEND_BASE_URL: http://backend:4000/api
+    depends_on:
+      - postgres
+      - backend
+
+volumes:
+  pgdata:
+    name: chanakyaiq_pgdata
