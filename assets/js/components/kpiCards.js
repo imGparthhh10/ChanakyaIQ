@@ -105,6 +105,16 @@ function computeExecutiveKPIs(cache, records) {
   const stateCounts = cache.stateCounts ? cache.stateCounts() : {};
   const stateCountValues = Object.values(stateCounts).sort((a, b) => b - a).slice(0, 10);
 
+  // dataEngine.branches is the flat, unfiltered branch store -- scope it to
+  // just the companies actually in `data` (the current filtered view), same
+  // as every other KPI here, so "Total Companies" and its branch count in
+  // the merged card can never read as mismatched the way the old separate
+  // "Total Companies"/"Total Branches" cards used to (see filters.js's
+  // "75 companies / 3,120 branches" comment for the original version of
+  // this exact inconsistency).
+  const visibleKeys = new Set(data.map((r) => r._dedupeKey).filter(Boolean));
+  const visibleBranches = (dataEngine.branches || []).filter((b) => visibleKeys.has(b.parentKey));
+
   return {
     totalCompanies: n,
     totalRevenue,
@@ -133,8 +143,9 @@ function computeExecutiveKPIs(cache, records) {
     sparkCatRevenue: catRevSorted,
     sparkStateCounts: stateCountValues,
 
-    // Branch-level metrics — 0 until Banking Master's branch data is loaded
-    totalBranches: (dataEngine.branches || []).length,
+    // Branch-level metrics — scoped to visibleBranches (see above), 0 until
+    // Banking Master's branch data is loaded.
+    totalBranches: visibleBranches.length,
     totalStates: (() => {
       // Canonicalize common state-name variants so duplicates don't inflate the count
       const ALIAS = {
@@ -149,19 +160,19 @@ function computeExecutiveKPIs(cache, records) {
         return ALIAS[k] || k;
       };
       const set = new Set();
-      for (const b of (dataEngine.branches || [])) if (b.state) set.add(canon(b.state));
+      for (const b of visibleBranches) if (b.state) set.add(canon(b.state));
       for (const r of (data || [])) if (r && r.state) set.add(canon(r.state));
       return set.size;
     })(),
     citiesCovered: (() => {
       const set = new Set();
-      for (const b of (dataEngine.branches || [])) if (b.city) set.add(b.city);
+      for (const b of visibleBranches) if (b.city) set.add(b.city);
       for (const r of (data || [])) if (r && r.hqCity) set.add(r.hqCity);
       return set.size;
     })(),
     districtCoverage: (() => {
       const set = new Set();
-      for (const b of (dataEngine.branches || [])) if (b.district) set.add(b.district);
+      for (const b of visibleBranches) if (b.district) set.add(b.district);
       return set.size;
     })(),
   };
@@ -243,27 +254,20 @@ function sparklineSVG(values, color, width = 80, height = 28) {
 function buildCardDefs(kpis) {
   return [
     {
+      // Merged with the former standalone "Total Branches" card so the
+      // headline number (companies) and its branch-network detail read
+      // together instead of as two cards that could visually disagree.
       id: 'total-companies',
       label: 'Total Companies',
       value: fmtNumber(kpis.totalCompanies),
       rawValue: kpis.totalCompanies,
-      sub: 'Unique parent companies',
+      sub: kpis.totalBranches > 0
+        ? `${fmtNumber(kpis.totalBranches)} branches · ${kpis.totalStates} states`
+        : 'Unique parent companies',
       icon: 'building',
       color: '#3B82F6',
       gradient: 'linear-gradient(135deg, #1E3A8A, #3B82F6)',
       sparkData: kpis.sparkStateCounts,
-    },
-    {
-      id: 'total-branches',
-      label: 'Total Branches',
-      value: fmtNumber(kpis.totalBranches),
-      rawValue: kpis.totalBranches,
-      sub: kpis.totalBranches > 0
-        ? `${kpis.totalStates} states · ${kpis.citiesCovered.toLocaleString('en-IN')} cities`
-        : 'No branch-level data loaded',
-      icon: 'link',
-      color: '#EC4899',
-      gradient: 'linear-gradient(135deg, #831843, #EC4899)',
     },
     {
       id: 'total-revenue',

@@ -143,26 +143,28 @@ function formatBranchPopup(br) {
         ${br.hqLocation ? '<tr><td>Parent HQ</td><td>' + br.hqLocation + '</td></tr>' : ''}
       </table>
       <div class="ebp-actions">
-        <a href="#/company/${encoded}" class="ebp-btn ebp-btn-primary" data-focus-branch="${br.id}" data-focus-ifsc="${br.ifsc || ''}">Open Company 360 →</a>
+        <button type="button" class="ebp-btn ebp-btn-primary" data-focus-branch="${br.id}" data-focus-ifsc="${br.ifsc || ''}" data-open-branch-company="${encoded}">Open Company 360 →</button>
         ${br.website ? '<a href="' + (br.website.startsWith('http') ? br.website : 'https://' + br.website) + '" target="_blank" rel="noopener" class="ebp-btn">Website</a>' : ''}
       </div>
     </div>`;
 }
 
 // Delegated listener: when a branch popup's "Open Company 360" button is
-// clicked, stash the branch to focus so the Company 360 page can scroll to
-// and highlight it once it mounts. Installed once at module load.
+// clicked, stash the branch to focus (so focusBranchIfRequested can scroll
+// to and highlight it once rendered) and open the split-view panel in
+// place — no navigation. Installed once at module load.
 if (typeof document !== 'undefined' && !window.__esdsBranchFocusWired) {
   window.__esdsBranchFocusWired = true;
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest?.('[data-focus-branch]');
+    const btn = e.target.closest?.('[data-open-branch-company]');
     if (!btn) return;
     const id = btn.getAttribute('data-focus-branch');
     const ifsc = btn.getAttribute('data-focus-ifsc');
     try {
       sessionStorage.setItem('boip_branch_focus', JSON.stringify({ id, ifsc }));
     } catch { /* sessionStorage unavailable — silently skip highlight */ }
-    // The anchor's href handles navigation to Company 360.
+    const parentKey = decodeURIComponent(btn.getAttribute('data-open-branch-company') || '');
+    bus.emit('map:branch-popup-open', { parentKey });
   });
 }
 
@@ -232,16 +234,16 @@ export class BranchLayer {
         className: 'esds-leaflet-tooltip',
       });
 
-      // Clicking a branch dot opens the parent company's Company 360 page
-      // and highlights this branch — no separate popup/page.
+      // Clicking a branch dot opens the parent company in the split-view
+      // panel in place (companyPanel.js) — no navigation, no separate
+      // popup/page. The sessionStorage flag still drives
+      // focusBranchIfRequested's scroll-to-branch highlight, which
+      // renderCompanyDetail calls regardless of standalone-page vs. panel.
       marker.on('click', () => {
         bus.emit('map:branch-click', { branch: br, latlng: [lat, lng] });
         try {
           sessionStorage.setItem('boip_branch_focus', JSON.stringify({ id: br.id, ifsc: br.ifsc || '' }));
         } catch { /* sessionStorage unavailable — skip highlight */ }
-        if (br.parentKey) {
-          location.hash = '#/company/' + encodeURIComponent(br.parentKey);
-        }
       });
 
       batch.push(marker);
@@ -343,15 +345,13 @@ export class MarkerManager {
       });
 
       marker.on('click', () => {
-        // Navigate to the Company 360 permalink page — that page is the
-        // canonical "full profile" view. The old drawer-preview is
-        // superseded by Company 360; skipping company:select prevents
-        // the drawer from stacking on top of the routed page.
+        // Opens the Company 360 detail in the split-view panel next to the
+        // map (companyPanel.js listens for this) instead of navigating
+        // away — keeps the map in view so the next company can be picked
+        // immediately. Falls back to the drawer preview if there's no
+        // dedupe key to key the panel off of.
         bus.emit('map:marker-click', { record: rec, latlng: [lat, lng] });
-        if (rec._dedupeKey) {
-          location.hash = '#/company/' + encodeURIComponent(rec._dedupeKey);
-        } else {
-          // Fallback: no dedupe key → fall back to drawer preview
+        if (!rec._dedupeKey) {
           bus.emit('company:select', rec);
         }
       });

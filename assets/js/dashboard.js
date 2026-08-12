@@ -14,6 +14,7 @@ import { installGlobalErrorBoundary, attachDataErrorHandler, safeAsync } from '.
 import { installGlobalKeys, announce } from './utils/a11y.js';
 import { dataEngine } from './data/data.js';
 import { mapEngine }          from './map/map.js';
+import { initCompanyPanel }   from './map/companyPanel.js';
 import { initCompanyDetail }   from './components/companyDetail.js';
 import { initRecommendations } from './recommendations/renderer.js';
 import { initKPICards }        from './components/kpiCards.js';
@@ -21,12 +22,19 @@ import { initFilters }         from './components/filters.js';
 import { initCharts }          from './charts/charts.js';
 import { initCompare }         from './compare/compare.js';
 import { initExport }          from './export/export.js';
-import { initRouter, registerRoute } from './router.js';
+import { initRouter, registerRoute, currentPath } from './router.js';
 import { initCommandPalette }  from './commandPalette.js';
 import { initBranding }        from './components/branding.js';
+import { mountHome }           from './pages/home.js';
+import { mountLogin }          from './pages/login.js';
+import { me as fetchMe }       from './data/authClient.js';
 import { mountCompany360 }     from './pages/company360.js';
+import { mountCompanyDirectory } from './pages/companyDirectory.js';
 import { mountListsIndex, mountListDetail } from './pages/lists.js';
 import { mountSignalsFeed }    from './pages/signals.js';
+import { mountIcpSettings }    from './pages/icpSettings.js';
+import { mountBusinessIntent } from './pages/businessIntent.js';
+import { initIcpSection }     from './components/icpSection.js';
 import { mountExecutive }      from './pages/executive.js';
 import { mountMyTerritory }    from './pages/myTerritory.js';
 import { mountWhitespace }     from './pages/whitespace.js';
@@ -126,8 +134,50 @@ const bootDataEngine = safeAsync(
 async function boot() {
   // ─── Install global safety net FIRST ─────────
   installGlobalErrorBoundary();
-  attachDataErrorHandler({ onRetry: () => dataEngine.reload() });
   installGlobalKeys();
+
+  theme.init();
+  layout.init(); // sidebar/navbar mount underneath — harmless even when
+                  // the login overlay (position:fixed, covers everything)
+                  // is what's actually shown below.
+
+  // ─── Route registration ─────────────────────
+  // /login is always registered — needed whether or not the session below
+  // turns out valid. Everything else is registered too (cheap — just an
+  // array push), but only actually gets *used* once we know the session
+  // is valid; see the early return below for the unauthenticated path.
+  registerRoute('/login', mountLogin);
+  registerRoute('/', () => {}, { persistentId: 'home-page' });
+  registerRoute('/companies', () => {}, { persistentId: 'companies-atlas-page' });
+  registerRoute('/analytics', () => {}, { persistentId: 'analytics-page' });
+  registerRoute('/recommendations', () => {}, { persistentId: 'recommendations-page' });
+  registerRoute('/executive',    mountExecutive);
+  registerRoute('/my-territory', mountMyTerritory);
+  registerRoute('/digest',       mountDigest);
+  registerRoute('/whitespace',   mountWhitespace);
+  registerRoute('/sectors',      mountSectorsIndex);
+  registerRoute('/sector/:key',  mountSector);
+  registerRoute('/company/:key', mountCompany360);
+  registerRoute('/directory',    mountCompanyDirectory);
+  registerRoute('/lists',        mountListsIndex);
+  registerRoute('/lists/:id',    mountListDetail);
+  registerRoute('/signals',      mountSignalsFeed);
+  registerRoute('/settings/icp', mountIcpSettings);
+  registerRoute('/settings/business-intent', mountBusinessIntent);
+
+  // ─── Auth gate ───────────────────────────────
+  // me() is a no-op (no network call) if there's no stored token at all —
+  // the common case for a never-logged-in visitor is instant. If a token
+  // exists, it's validated against the server (catches expired/revoked
+  // sessions from a previous visit) before any of the expensive
+  // map/data/chart machinery below ever starts.
+  const user = await fetchMe();
+  if (!user) {
+    hideLoadingScreen();
+    if (currentPath() !== '/login') location.hash = '#/login';
+    initRouter();
+    return; // skip the whole authenticated boot below
+  }
 
   // ─── Workspace resolvers — must run before filters init ───
   DataCache.registerFilterResolvers({
@@ -137,15 +187,16 @@ async function boot() {
     hasSignal:     (rec, type) => hasSignal(rec, type),
   });
   installScoreHistory();  // snapshots opportunity scores on every data:ready
-
-  theme.init();
-  layout.init();
+  attachDataErrorHandler({ onRetry: () => dataEngine.reload() });
 
   setupProgressListener();
   bus.on('data:ready', onDataReady);
+  mountHome();
   initCompanyDetail();
+  initCompanyPanel();
   initRecommendations();
   initKPICards();
+  initIcpSection();
   initFilters();
   initCharts();
   initCompare();
@@ -154,19 +205,6 @@ async function boot() {
   initBranding();
   wireHeaderActions();
 
-  // ─── Route registration ─────────────────────
-  // Home is a no-op mount — the router just shows #home-page.
-  registerRoute('/', () => {});
-  registerRoute('/executive',    mountExecutive);
-  registerRoute('/my-territory', mountMyTerritory);
-  registerRoute('/digest',       mountDigest);
-  registerRoute('/whitespace',   mountWhitespace);
-  registerRoute('/sectors',      mountSectorsIndex);
-  registerRoute('/sector/:key',  mountSector);
-  registerRoute('/company/:key', mountCompany360);
-  registerRoute('/lists',        mountListsIndex);
-  registerRoute('/lists/:id',    mountListDetail);
-  registerRoute('/signals',      mountSignalsFeed);
   initRouter();
 
   updateLoadingText('Loading BFSI market data…');

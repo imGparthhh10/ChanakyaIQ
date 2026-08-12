@@ -3,12 +3,21 @@
  *
  * Zero-build, works with file:// and any static origin. Routes are
  * registered as pattern strings with `:param` placeholders. The router
- * shows one of two containers:
- *   - #home-page (the existing dashboard) for the home route
- *   - #page-mount for every other route (dynamically populated)
+ * shows one of:
+ *   - a persistent container (registered via `persistentId`) — always in
+ *     the DOM, just shown/hidden. Used for pages whose modules wire
+ *     themselves up exactly once at boot and assume their DOM targets are
+ *     permanently present (the map, filters, charts, KPI cards,
+ *     recommendations) — true mount/unmount would break them (Leaflet
+ *     throws if its container isn't in the DOM at init; others would just
+ *     go stale). See dashboard.js for which routes use this.
+ *   - #page-mount for every other route (dynamically populated/torn down
+ *     on each navigation, via the page's own mount function)
  *
  * A page's mount function receives (container, params). It may return
- * a dispose function that the router calls on next navigation.
+ * a dispose function that the router calls on next navigation. Persistent
+ * routes pass a no-op mount (nothing to mount — the container's content
+ * was rendered once at boot and just gets shown again).
  */
 
 import { bus } from './utils/eventBus.js';
@@ -16,12 +25,18 @@ import { bus } from './utils/eventBus.js';
 const routes = [];
 let _dispose = null;
 
+// Every persistentId ever registered — hidden by default, shown only when
+// its own route matches.
+const persistentIds = new Set();
+
 /**
  * Register a route.
  * @param {string} pattern e.g. '/' or '/company/:key'
  * @param {Function} mount async (container, params) => disposeFn?
+ * @param {{persistentId?: string}} [opts] — persistentId shows that
+ *   always-in-DOM container instead of using #page-mount; mount is a no-op.
  */
-export function registerRoute(pattern, mount) {
+export function registerRoute(pattern, mount, opts = {}) {
   const keys = [];
   const rx = new RegExp(
     '^' +
@@ -30,7 +45,8 @@ export function registerRoute(pattern, mount) {
       .replace(/:(\w+)/g, (_, k) => { keys.push(k); return '([^/]+)'; }) +
     '$'
   );
-  routes.push({ pattern, rx, keys, mount });
+  if (opts.persistentId) persistentIds.add(opts.persistentId);
+  routes.push({ pattern, rx, keys, mount, persistentId: opts.persistentId });
 }
 
 /** Programmatic navigation. */
@@ -49,21 +65,27 @@ export function currentPath() {
 }
 
 /**
- * Show/hide the two page containers. The existing dashboard lives
- * in #home-page; dynamic pages render into #page-mount.
+ * Show one persistent container (hiding every other persistent container
+ * and #page-mount). Persistent containers are never torn down — their
+ * content was rendered once at boot by whatever module owns them.
  */
-function showHome() {
-  const home = document.getElementById('home-page');
-  const dyn  = document.getElementById('page-mount');
-  if (home) home.hidden = false;
-  if (dyn)  { dyn.hidden = true; dyn.innerHTML = ''; }
+function showPersistent(id) {
+  for (const pid of persistentIds) {
+    const el = document.getElementById(pid);
+    if (el) el.hidden = (pid !== id);
+  }
+  const dyn = document.getElementById('page-mount');
+  if (dyn) { dyn.hidden = true; dyn.innerHTML = ''; }
 }
 
+/** Hide every persistent container and reveal #page-mount for a dynamic page. */
 function showDynamic() {
-  const home = document.getElementById('home-page');
-  const dyn  = document.getElementById('page-mount');
-  if (home) home.hidden = true;
-  if (dyn)  dyn.hidden = false;
+  for (const pid of persistentIds) {
+    const el = document.getElementById(pid);
+    if (el) el.hidden = true;
+  }
+  const dyn = document.getElementById('page-mount');
+  if (dyn) dyn.hidden = false;
   return dyn;
 }
 
@@ -92,13 +114,13 @@ async function render() {
   if (!found) {
     // Unknown route — send to home
     if (path !== '/') { navigate('/'); return; }
-    showHome();
+    showPersistent('home-page');
     bus.emit('route:change', { path: '/', params: {} });
     return;
   }
 
-  if (found.route.pattern === '/' || found.route.pattern === '') {
-    showHome();
+  if (found.route.persistentId) {
+    showPersistent(found.route.persistentId);
   } else {
     const container = showDynamic();
     if (!container) return;

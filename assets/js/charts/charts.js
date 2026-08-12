@@ -107,20 +107,33 @@ function renderSidebarCharts(records) {
   renderTopStates(records);
 }
 
+// Top N categories shown individually; the remainder is grouped into a single
+// labelled "Other" slice rather than dropped. Keeps the legend to one page in
+// a narrow card (10 individual entries paginated to 6 pages, which is what
+// made the legend unreadable) without hiding any of the total from the chart.
+const SECTOR_MIX_TOP_N = 6;
+
+function groupTail(entries, topN) {
+  if (entries.length <= topN) return entries;
+  const head = entries.slice(0, topN);
+  const tailTotal = entries.slice(topN).reduce((sum, [, value]) => sum + value, 0);
+  return tailTotal > 0 ? [...head, ['Other', tailTotal]] : head;
+}
+
 function renderSectorMix(records) {
   const chart = getOrCreate('chart-sector-mix');
   if (!chart) return;
   const t = getChartTheme();
-  const data = countByField(records, 'category').slice(0, 10);
+  const data = groupTail(countByField(records, 'category'), SECTOR_MIX_TOP_N);
 
   chart.setOption({
     color: t.palette,
     tooltip: { ...t.tooltip(), trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { ...t.legend(), bottom: 0, type: 'scroll' },
+    legend: { ...t.legend(), bottom: 0, type: 'scroll', itemGap: 10, padding: [0, 8] },
     series: [{
       type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['50%', '45%'],
+      radius: ['42%', '68%'],
+      center: ['50%', '42%'],
       avoidLabelOverlap: true,
       itemStyle: { borderRadius: 6, borderColor: t.darkMode ? '#0F172A' : '#fff', borderWidth: 2 },
       label: { show: false },
@@ -137,6 +150,9 @@ function renderSectorMix(records) {
 
   chart.off('click');
   chart.on('click', (params) => {
+    // 'Other' is a synthetic aggregate of the tail categories, not a real
+    // `category` value — drilling into it would filter to zero records.
+    if (params.name === 'Other') return;
     bus.emit('filter:apply', { category: params.name });
   });
 }
@@ -150,13 +166,17 @@ function renderRevenueDistribution(records) {
   chart.setOption({
     color: t.palette,
     tooltip: { ...t.tooltip(), trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
+    // right:64 reserves room for the value label ("5.7L Cr" was being clipped
+    // at the card edge at right:20).
+    grid: { left: 10, right: 64, top: 10, bottom: 10, containLabel: true },
     xAxis: { type: 'value', show: false },
     yAxis: {
       type: 'category',
       data: data.map(d => d[0]).reverse(),
       ...t.axis(),
-      axisLabel: { ...t.axisLabel, width: 90, overflow: 'truncate' },
+      // interval:0 forces every category label to render — without it ECharts
+      // silently drops labels when rows get tight, leaving unlabelled bars.
+      axisLabel: { ...t.axisLabel, interval: 0, width: 96, overflow: 'truncate' },
     },
     series: [{
       type: 'bar',
@@ -183,13 +203,16 @@ function renderTopStates(records) {
 
   chart.setOption({
     tooltip: { ...t.tooltip(), trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 10, right: 50, top: 10, bottom: 10, containLabel: true },
+    grid: { left: 10, right: 44, top: 10, bottom: 10, containLabel: true },
     xAxis: { type: 'value', show: false },
     yAxis: {
       type: 'category',
       data: data.map(d => d[0]).reverse(),
       ...t.axis(),
-      axisLabel: { ...t.axisLabel, width: 80, overflow: 'truncate' },
+      // interval:0 — this chart shows 10 states; without it ECharts was
+      // rendering only ~5 labels against 10 bars (visible in the dashboard as
+      // bars with no state name next to them).
+      axisLabel: { ...t.axisLabel, interval: 0, width: 88, overflow: 'truncate' },
     },
     series: [{
       type: 'bar',
@@ -764,6 +787,20 @@ function onThemeChange() {
   renderAllCharts(records);
 }
 
+// The Analytics page is a persistent container (router.js) — hidden
+// (display:none) whenever it isn't the active route, including at boot if
+// Home is the landing page. Chart instances created via getOrCreate() while
+// hidden get initialized against a zero-size container (qs() still finds
+// hidden elements, ec.init() doesn't know they're invisible), so they need
+// the same resize() pass onResize() already does for window resizes,
+// triggered instead by navigating into view.
+function onRouteChange({ path }) {
+  if (path !== '/analytics') return;
+  for (const chart of Object.values(_charts)) {
+    try { chart.resize(); } catch {}
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // Public Init
 // ═══════════════════════════════════════════════════
@@ -796,4 +833,5 @@ export async function initCharts() {
   });
 
   bus.on('theme:change', onThemeChange);
+  bus.on('route:change', onRouteChange);
 }

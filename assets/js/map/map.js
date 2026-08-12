@@ -202,18 +202,32 @@ function toggleBranches(visible) {
   else         _branchLayer.hide();
 }
 
+/** Branches belonging to companies in `records` — same scoping
+ *  kpiCards.js applies to its branch count, so the map's Branches overlay
+ *  never shows a dot for a company whose own HQ marker is currently
+ *  filtered out. _branchLayer.load() only rebuilds its marker set; it
+ *  doesn't touch show/hide state, so this is safe to call regardless of
+ *  whether the branch layer is currently visible. */
+function branchesFor(records) {
+  const visibleKeys = new Set(records.map((r) => r._dedupeKey).filter(Boolean));
+  return _branches.filter((b) => visibleKeys.has(b.parentKey));
+}
+
 function wireFilterEvents() {
   bus.on('filter:apply', (filters) => {
     if (!_cache) return;
     const filtered = _cache.query(filters);
 
     _markers.updateFilter(filtered);
+    if (_branchLayer) _branchLayer.load(branchesFor(filtered));
     switchView(_currentView);
   });
 
   bus.on('filter:reset', () => {
     if (!_cache) return;
-    _markers.updateFilter(_cache.getAll());
+    const all = _cache.getAll();
+    _markers.updateFilter(all);
+    if (_branchLayer) _branchLayer.load(branchesFor(all));
     switchView(_currentView);
   });
 }
@@ -223,6 +237,33 @@ function wireThemeEvents() {
     const tile = theme === 'dark' ? 'dark' : 'light';
     _map.eachLayer(l => { if (l._url) _map.removeLayer(l); });
     createTileLayer(tile).addTo(_map);
+  });
+}
+
+// .map-container's height is viewport-relative (calc(100vh - ...), see
+// dashboard.css) — a window resize changes the map's real pixel size, but
+// Leaflet has no built-in ResizeObserver, so its tiles go stale until
+// something tells it to re-measure. Debounced so a resize drag doesn't
+// spam recalculation.
+function wireResizeEvents() {
+  let timer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (_map) _map.invalidateSize(); }, 150);
+  });
+}
+
+// The Companies & Geo Atlas page is a persistent container (router.js) —
+// hidden (display:none) whenever it isn't the active route, including at
+// boot if Home is the landing page. Leaflet measures a zero-size container
+// under display:none, so the map renders broken until told to re-measure
+// after the container becomes visible again. No resize event fires on a
+// `hidden` attribute toggle, so this has to be driven off route changes.
+function wireRouteVisibilityEvents() {
+  bus.on('route:change', ({ path }) => {
+    if (path === '/companies' && _map) {
+      setTimeout(() => _map.invalidateSize(), 50);
+    }
   });
 }
 
@@ -241,6 +282,8 @@ export const mapEngine = {
       wireViewButtons();
       wireFilterEvents();
       wireThemeEvents();
+      wireResizeEvents();
+      wireRouteVisibilityEvents();
 
       // Fetch state boundaries in background
       fetchIndiaStates().then(geojson => {

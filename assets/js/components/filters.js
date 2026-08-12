@@ -57,11 +57,46 @@ const ICP_SCORE_BRACKETS = [
   { label: '90 – 100',   min: 90,   max: 100 },
 ];
 
+const BRANCH_COUNT_BRACKETS = [
+  { label: 'All',       min: null, max: null },
+  { label: '< 5',       min: null, max: 5 },
+  { label: '5 – 10',    min: 5,    max: 10 },
+  { label: '10 – 50',   min: 10,   max: 50 },
+  { label: '50 – 200',  min: 50,   max: 200 },
+  { label: '> 200',     min: 200,  max: null },
+];
+
+// Bands sized to the real data distribution (checked live via the DB:
+// IT Spend ₹0.02–900 Cr, median ₹23.5 Cr; Cloud Spend ₹1.5–220 Cr, median
+// ₹10 Cr) — not arbitrary round numbers, which would bucket most orgs
+// into one undifferentiated top band.
+const IT_SPEND_BRACKETS = [
+  { label: 'All',           min: null, max: null },
+  { label: '< ₹1 Cr',       min: null, max: 1 },
+  { label: '₹1 – 10 Cr',    min: 1,    max: 10 },
+  { label: '₹10 – 50 Cr',   min: 10,   max: 50 },
+  { label: '₹50 – 200 Cr',  min: 50,   max: 200 },
+  { label: '₹200 – 500 Cr', min: 200,  max: 500 },
+  { label: '> ₹500 Cr',     min: 500,  max: null },
+];
+
+const CLOUD_SPEND_BRACKETS = [
+  { label: 'All',           min: null, max: null },
+  { label: '< ₹5 Cr',       min: null, max: 5 },
+  { label: '₹5 – 25 Cr',    min: 5,    max: 25 },
+  { label: '₹25 – 75 Cr',   min: 25,   max: 75 },
+  { label: '₹75 – 150 Cr',  min: 75,   max: 150 },
+  { label: '> ₹150 Cr',     min: 150,  max: null },
+];
+
 // Maps a `type: 'range'` filter def id to its cache.js query() filter keys.
 const RANGE_FILTER_KEYS = {
-  revenue:   ['revenueMin', 'revenueMax'],
-  employees: ['employeeMin', 'employeeMax'],
-  icpScore:  ['icpScoreMin', 'icpScoreMax'],
+  revenue:     ['revenueMin', 'revenueMax'],
+  employees:   ['employeeMin', 'employeeMax'],
+  icpScore:    ['icpScoreMin', 'icpScoreMax'],
+  branchCount: ['branchCountMin', 'branchCountMax'],
+  itSpend:     ['itSpendMin', 'itSpendMax'],
+  cloudSpend:  ['cloudSpendMin', 'cloudSpendMax'],
 };
 
 // Fixed set — the ICP engine's 5 tiers (backend/src/modules/icp/icp.service.ts).
@@ -71,6 +106,37 @@ const TIER_OPTIONS = [
   { value: 'Tier 2',     label: 'Tier 2' },
   { value: 'Tier 3',     label: 'Tier 3' },
   { value: 'Watchlist',  label: 'Watchlist' },
+];
+
+// Fixed set — backend/src/modules/businessIntent/businessIntent.scoring.ts.
+const BUSINESS_INTENT_CLASSIFICATION_OPTIONS = [
+  { value: 'Qualified',     label: 'Qualified' },
+  { value: 'Watch',         label: 'Watch' },
+  { value: 'Not Qualified', label: 'Not Qualified' },
+  { value: 'Not Scored',    label: 'Not Scored' },
+];
+
+// Fixed set — backend/src/modules/businessIntent/businessIntent.priority.ts.
+const FINAL_PRIORITY_OPTIONS = [
+  { value: 'Hot -- top priority',                                      label: 'Hot — top priority' },
+  { value: 'High potential, needs nurturing',                          label: 'High potential, needs nurturing' },
+  { value: 'Strategic fit, no signal yet -- outbound trigger candidate', label: 'Strategic fit, no signal yet' },
+  { value: 'Signal-driven -- worth pursuing despite lower ICP fit',     label: 'Signal-driven' },
+  { value: 'Moderate -- monitor',                                      label: 'Moderate — monitor' },
+  { value: 'Deprioritize',                                             label: 'Deprioritize' },
+];
+
+// 3-state, not binary — see organizations.mapper.ts for why (51% of orgs
+// have no ownership_type on file, so "Unlisted" can't be assumed for them).
+const LISTED_STATUS_OPTIONS = [
+  { value: 'Listed',   label: 'Listed' },
+  { value: 'Unlisted', label: 'Unlisted' },
+  { value: 'Unknown',  label: 'Unknown / not on file' },
+];
+
+const AVAILABILITY_OPTIONS = [
+  { value: 'true',  label: 'Yes' },
+  { value: 'false', label: 'No' },
 ];
 
 // Live tag list — computed from whatever's actually in the loaded data,
@@ -83,6 +149,16 @@ function opportunityTagOptions(cache) {
   return [...set].sort();
 }
 
+// Live sector list — real and generic (Stage 8), but a no-op today since
+// every imported org is sector "BFSI".
+function sectorOptions(cache) {
+  const set = new Set();
+  for (const r of cache.getAll()) {
+    if (r.sector) set.add(r.sector);
+  }
+  return [...set].sort();
+}
+
 const SAVED_FILTERS_KEY = 'esds_bfsi_saved_filters';
 const MAX_SUGGESTIONS   = 8;
 const DEBOUNCE_MS       = 180;
@@ -90,7 +166,19 @@ const DEBOUNCE_MS       = 180;
 // ─── State ────────────────────────────────────────
 
 let _cache       = null;
-let _filters     = {};
+// Default view = ALL organizations (all 297), so the KPI row's "Total
+// Companies" agrees with "Total Branches" (3,120) instead of counting only
+// the ICP-qualified subset while branches counted everything — the
+// inconsistency that made the dashboard read "75 companies / 3,120 branches".
+// The "Show all"/qualified toggle in the action bar still sets isQualified
+// on demand; it's a view mode, so it's never counted in the "N active" badge
+// or shown as a removable chip.
+//
+// hasMinimumData:true is on by default (unlike isQualified) -- it hides
+// organizations with none of Revenue/IT Spend/Leadership/Allocated Budget
+// on file, same "default view" treatment isQualified gets when the user has
+// narrowed to it. The "Show all" toggle clears both together.
+let _filters     = { hasMinimumData: true };
 let _activeCount = 0;
 
 // ─── Filter Definitions ──────────────────────────
@@ -141,10 +229,17 @@ function buildFilterDefs(cache) {
     { id: 'icpScore',         label: 'ICP Score',        type: 'range', icon: 'trendUp', brackets: ICP_SCORE_BRACKETS },
     { id: 'opportunityTags',  label: 'Opportunity Tags', type: 'chips', icon: 'layers',  options: () => opportunityTagOptions(cache) },
 
-    // Leadership
-    { id: 'ceo',          label: 'CEO',           type: 'text',   icon: 'user',        placeholder: 'Search CEO…' },
-    { id: 'cto',          label: 'CTO',           type: 'text',   icon: 'user',        placeholder: 'Search CTO…' },
-    { id: 'cio',          label: 'CIO',           type: 'text',   icon: 'user',        placeholder: 'Search CIO…' },
+    // Business Intent Engine (backend/src/modules/businessIntent/) — same
+    // fixed-set chip pattern as Opportunity Tier directly above.
+    { id: 'businessIntentClassifications', label: 'Business Intent', type: 'chips', icon: 'target', optionObjs: BUSINESS_INTENT_CLASSIFICATION_OPTIONS },
+    { id: 'finalPriorities',               label: 'Final Priority',  type: 'chips', icon: 'checkCircle', optionObjs: FINAL_PRIORITY_OPTIONS },
+    { id: 'branchCount',      label: 'Branch Count',     type: 'range', icon: 'building', brackets: BRANCH_COUNT_BRACKETS },
+    { id: 'listedStatus3',    label: 'Listed Status',    type: 'select', icon: 'chart',   optionObjs: LISTED_STATUS_OPTIONS },
+    { id: 'sector',           label: 'Sector',           type: 'select', icon: 'globe',   options: () => sectorOptions(cache) },
+    { id: 'hasLeadership',    label: 'Leadership on File', type: 'select', icon: 'user',  optionObjs: AVAILABILITY_OPTIONS },
+    { id: 'hasContact',       label: 'Contact on File',  type: 'select', icon: 'user',    optionObjs: AVAILABILITY_OPTIONS },
+    { id: 'itSpend',          label: 'IT Spend',         type: 'range',  icon: 'dollar',  brackets: IT_SPEND_BRACKETS },
+    { id: 'cloudSpend',       label: 'Cloud Spend',      type: 'range',  icon: 'cloud',   brackets: CLOUD_SPEND_BRACKETS },
 
     // Maturity + fit
     { id: 'cloudMaturity',label: 'Cloud Provider',type: 'select', icon: 'cloud',       options: () => cache.cloudMaturities() },
@@ -469,11 +564,10 @@ function renderRangeField(def) {
   return selectWrap;
 }
 
-// Multi-select chip toggle group — reuses the existing .c360-tag pill class
-// (dashboard.css) rather than inventing a new component; selected/
-// unselected state is a small inline-style toggle (opacity + accent
-// border) rather than a new CSS class, since no existing class already
-// expresses a "chip is active" state.
+// Multi-select chip toggle group — dedicated .ef-chip/.ef-chip.active pair
+// (dashboard.css), laid out via .ef-chip-group's flex-wrap grid. The field
+// itself spans the full filter-grid row (dashboard.css, by data-filter-id)
+// since a 13+ option chip set doesn't fit one narrow grid cell.
 function renderChipToggleField(def) {
   const wrap = h('div', { class: 'ef-chip-group' });
   const options = Array.isArray(def.optionObjs)
@@ -482,15 +576,11 @@ function renderChipToggleField(def) {
 
   const selected = new Set(_filters[def.id] || []);
 
-  const styleFor = (isOn) => isOn
-    ? 'opacity:1;border-color:var(--indigo);font-weight:600;cursor:pointer;'
-    : 'opacity:0.55;cursor:pointer;';
-
   for (const o of options) {
-    const chip = h('span', { class: 'c360-tag', style: styleFor(selected.has(o.value)) }, o.label);
+    const chip = h('span', { class: selected.has(o.value) ? 'ef-chip active' : 'ef-chip' }, o.label);
     chip.addEventListener('click', () => {
       if (selected.has(o.value)) selected.delete(o.value); else selected.add(o.value);
-      chip.setAttribute('style', styleFor(selected.has(o.value)));
+      chip.className = selected.has(o.value) ? 'ef-chip active' : 'ef-chip';
       if (selected.size) _filters[def.id] = [...selected]; else delete _filters[def.id];
       applyFilters();
     });
@@ -530,6 +620,14 @@ function renderTextField(def) {
 function renderActionBar() {
   const bar = h('div', { class: 'ef-action-bar' });
 
+  const showAllBtn = h('button', {
+    class: 'btn btn-ghost btn-sm ef-action-btn',
+    id: 'ef-show-all-toggle',
+    html: `${iconHtml('checkCircle')} Show all (incl. non-qualified & incomplete)`,
+    onclick: toggleShowAll,
+  });
+  bar.appendChild(showAllBtn);
+
   const saveBtn = h('button', {
     class: 'btn btn-ghost btn-sm ef-action-btn',
     html: `${iconHtml('download')} Save Filter`,
@@ -562,7 +660,10 @@ function renderActionBar() {
 // ─── Apply / Reset ────────────────────────────────
 
 function applyFilters() {
-  const activeKeys = Object.keys(_filters).filter(k => _filters[k] != null && _filters[k] !== '');
+  // isQualified/hasMinimumData are default-view modes, not filters the user
+  // explicitly applied — excluded from the "N active" count and the
+  // removable-chip list.
+  const activeKeys = Object.keys(_filters).filter(k => k !== 'isQualified' && k !== 'hasMinimumData' && _filters[k] != null && _filters[k] !== '');
   _activeCount = activeKeys.length;
 
   const badge = qs('#ef-active-count');
@@ -573,7 +674,11 @@ function applyFilters() {
 
   renderActiveTags();
 
-  if (_activeCount === 0) {
+  // Reset-vs-apply must check the *real* filters object (including
+  // isQualified), not the display-only _activeCount — otherwise the
+  // default qualified-only view (isQualified:true, nothing else touched)
+  // would incorrectly emit filter:reset and show everyone.
+  if (Object.keys(_filters).length === 0) {
     bus.emit('filter:reset');
     announce('Filters cleared. Showing all companies.', 'polite');
   } else {
@@ -584,7 +689,11 @@ function applyFilters() {
 }
 
 function resetAllFilters() {
-  _filters = {};
+  // Reset restores the default view — every organization except data-sparse
+  // ones (hasMinimumData:true) — so the toggle must report "not fully
+  // showing all" to stay in sync with _filters.
+  _filters = { hasMinimumData: true };
+  setShowAllButtonState(false);
 
   // Reset all select elements
   qsa('.ef-select').forEach(sel => { sel.selectedIndex = 0; });
@@ -600,6 +709,36 @@ function resetAllFilters() {
   applyFilters();
 }
 
+// ─── Qualified-only / Show-all toggle ─────────────
+
+function setShowAllButtonState(showingAll) {
+  const btn = qs('#ef-show-all-toggle');
+  if (!btn) return;
+  btn.classList.toggle('ef-show-all-active', showingAll);
+  btn.innerHTML = showingAll
+    ? `${iconHtml('checkCircle')} Qualified & complete only`
+    : `${iconHtml('checkCircle')} Show all (incl. non-qualified & incomplete)`;
+}
+
+function toggleShowAll() {
+  // Both view-mode filters move together -- one button, one "curated vs.
+  // everything" switch. isQualified stays off by default (review-queue
+  // orgs are visible out of the box); hasMinimumData is on by default
+  // (data-sparse orgs are hidden out of the box). Either one being active
+  // means we're not "showing all" yet.
+  const restricted = _filters.isQualified === true || _filters.hasMinimumData === true;
+  if (restricted) {
+    delete _filters.isQualified;
+    delete _filters.hasMinimumData;
+    setShowAllButtonState(true);
+  } else {
+    _filters.isQualified = true;
+    _filters.hasMinimumData = true;
+    setShowAllButtonState(false);
+  }
+  applyFilters();
+}
+
 // ─── Active Filter Tags ──────────────────────────
 
 function renderActiveTags() {
@@ -608,6 +747,7 @@ function renderActiveTags() {
   wrap.innerHTML = '';
 
   for (const [key, val] of Object.entries(_filters)) {
+    if (key === 'isQualified' || key === 'hasMinimumData') continue; // view mode, shown via the toggle button instead
     if (val == null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
     const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
     const displayVal = Array.isArray(val) ? val.join(', ') : val;
@@ -651,6 +791,12 @@ function removeFilter(key) {
     delete _filters.icpScoreMin;
     delete _filters.icpScoreMax;
     const sel = qs('#ef-icpScore');
+    if (sel) sel.selectedIndex = 0;
+  }
+  if (key === 'branchCountMin' || key === 'branchCountMax') {
+    delete _filters.branchCountMin;
+    delete _filters.branchCountMax;
+    const sel = qs('#ef-branchCount');
     if (sel) sel.selectedIndex = 0;
   }
   if (key === 'opportunityTiers' || key === 'opportunityTags') {
@@ -797,6 +943,11 @@ function showSavedFilters() {
 function applySavedFilter(filterData) {
   resetAllFilters();
   _filters = { ...filterData };
+  // Filters saved before isQualified/hasMinimumData existed have neither
+  // key — that correctly means "show everyone matching this filter", so
+  // sync the toggle button to reflect whatever ended up in _filters, not
+  // the default.
+  setShowAllButtonState(_filters.isQualified !== true && _filters.hasMinimumData !== true);
 
   // Restore UI state for each filter
   for (const [key, val] of Object.entries(_filters)) {
@@ -861,11 +1012,27 @@ function showToast(msg) {
   }, 2500);
 }
 
+// ─── Shared view-mode getters ─────────────────────
+
+// Read by pages that don't render the shared filter sidebar (e.g. Company
+// Directory, which deliberately shows every organization regardless of
+// isQualified) but still need to respect the data-sparse default view —
+// re-read fresh on each call rather than pushed via an event, since those
+// pages re-render on their own navigation lifecycle anyway.
+export function isHidingDataSparse() {
+  return _filters.hasMinimumData === true;
+}
+
 // ─── Public Init ──────────────────────────────────
 
 export function initFilters() {
   bus.on('data:ready', ({ cache }) => {
     _cache = cache;
     renderFilterBar(cache);
+    // Broadcast the default qualified-only view immediately — without this,
+    // _filters defaulting to {isQualified:true} would sit inert until the
+    // user touched a filter control, since nothing else triggers
+    // applyFilters() on initial load.
+    applyFilters();
   });
 }

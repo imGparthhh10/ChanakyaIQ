@@ -31,6 +31,7 @@ import { workspace }               from '../workspace/store.js';
 import { territory }               from '../workspace/territory.js';
 import { identity }                from '../workspace/identity.js';
 import { dataEngine, API_BASE }    from '../data/data.js';
+import { authFetch }               from '../data/authClient.js';
 import { navigate }                from '../router.js';
 import { generateBrief }           from '../ai/brief.js';
 import { generatePrep }            from '../ai/meetingPrep.js';
@@ -122,7 +123,7 @@ function renderOwnerButton(rec) {
 
 // ─── Header ───────────────────────────────────────
 
-function renderHeader(rec) {
+function renderHeader(rec, { showNav = true } = {}) {
   const key   = rec._dedupeKey;
   const score = opportunityValue(rec);
   const conf  = confidenceScore(rec);
@@ -131,7 +132,7 @@ function renderHeader(rec) {
 
   return `
     <header class="c360-header glass-panel">
-      <div class="c360-header-top">
+      ${showNav ? `<div class="c360-header-top">
         <button class="c360-back btn btn-ghost btn-sm" data-action="back">
           ${svgIcon('chevronLeft')} Back
         </button>
@@ -140,7 +141,7 @@ function renderHeader(rec) {
           <a href="#/companies">Companies</a> <span>/</span>
           <span class="c360-crumb-current">${escapeHTML(rec.companyName)}</span>
         </nav>
-      </div>
+      </div>` : ''}
 
       <div class="c360-header-main">
         <div class="c360-header-left">
@@ -324,6 +325,7 @@ function renderLeftColumn(rec) {
         ${statTile('Revenue', fmt(rec.revenue))}
         ${statTile('Market Cap', fmt(rec.marketCap))}
         ${statTile('Net Profit', fmt(rec.netProfit))}
+        ${statTile('Allocated Budget', fmt(rec.allocatedBudget))}
         ${statTile('IT Spend', fmt(rec.itSpend))}
         ${statTile('Cloud Spend', fmt(rec.cloudSpend))}
         ${statTile('Cyber Spend', fmt(rec.cyberSpend))}
@@ -476,6 +478,22 @@ function renderICP(rec) {
     </div>
     ${tags.length ? `<div class="c360-panel-subtitle" style="margin-top:12px">Opportunity Tags</div>
     <div class="c360-tags">${tags.map(t => `<span class="c360-tag">${escapeHTML(t)}</span>`).join('')}</div>` : ''}
+
+    <div class="c360-panel-subtitle" style="margin-top:12px">Organization Scale</div>
+    <p style="margin:4px 0;font-size:13px">
+      ${rec.employeeCount != null ? `${Number(rec.employeeCount).toLocaleString('en-IN')} employees` : 'Employee count — N/A'}
+      &nbsp;·&nbsp;
+      ${rec.branchTotal ? `${Number(rec.branchTotal).toLocaleString('en-IN')} branches` : 'Branch count — N/A'}
+    </p>
+
+    <div class="c360-panel-subtitle" style="margin-top:12px">Contact Profile</div>
+    ${(rec.pointOfContact || rec.contactEmail || rec.contactPhone)
+      ? `<p style="margin:4px 0;font-size:13px">
+          ${rec.pointOfContact ? escapeHTML(rec.pointOfContact) : ''}
+          ${rec.contactEmail ? ` · ${escapeHTML(rec.contactEmail)}` : ''}
+          ${rec.contactPhone ? ` · ${escapeHTML(rec.contactPhone)}` : ''}
+        </p>`
+      : '<p class="c360-empty">No contact data on file.</p>'}
   </div>`;
 }
 
@@ -486,7 +504,7 @@ async function loadICPDetail(container, rec) {
   if (!target || !rec._organizationId) return;
 
   try {
-    const resp = await fetch(`${API_BASE}/organizations/${rec._organizationId}/icp`);
+    const resp = await authFetch(`${API_BASE}/organizations/${rec._organizationId}/icp`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const detail = await resp.json();
     const reasons = detail.qualificationReasons || [];
@@ -689,6 +707,33 @@ function renderMaturitySection() {
   </div>`;
 }
 
+// Cloud/AI/Cyber/Digital maturity already surface inline in the header
+// badges and the radar chart above — this panel names them as one
+// explicit "Technology" section, reusing the same statTile() helper the
+// Financials panel uses, not a new component.
+function renderTechnology(rec) {
+  return `<div class="c360-panel glass-panel">
+    <h3 class="c360-panel-title">${svgIcon('zap')} Technology</h3>
+    <div class="c360-stat-grid">
+      ${statTile('AI Readiness', rec.aiReadiness || 'N/A')}
+      ${statTile('Cyber Score', rec.cyberMaturity || 'N/A')}
+      ${statTile('Cloud Adoption', rec.cloudMaturity || 'N/A')}
+      ${statTile('Digital Transformation', rec.digitalMaturity || 'N/A')}
+    </div>
+  </div>`;
+}
+
+// No news/document/AGM ingestion exists anywhere in the pipeline (backend's
+// crawler/enrichment domain is explicitly stubbed, zero real rows) — this
+// renders the requested section honestly empty rather than fabricating
+// headlines or dates, same "flag, don't fabricate" pattern used elsewhere.
+function renderRecentActivity() {
+  return `<div class="c360-panel glass-panel">
+    <h3 class="c360-panel-title">${svgIcon('bell')} Recent Activity</h3>
+    <p class="c360-empty">No recent activity on file yet — news, annual report, AGM and document tracking aren't wired up to a data source yet.</p>
+  </div>`;
+}
+
 // ─── Right column ─────────────────────────────────
 
 function renderNotesPanel(rec) {
@@ -783,7 +828,7 @@ function renderNotFound(container, key) {
       <div class="c360-nf-icon">🔍</div>
       <h2>Company not found</h2>
       <p>No record matches key <code>${escapeHTML(key)}</code>. It may have been renamed or removed from the dataset.</p>
-      <button class="btn btn-primary" onclick="location.hash='#/'">Back to Dashboard</button>
+      <button class="btn btn-primary" onclick="location.hash='#/companies'">Back to Dashboard</button>
     </section>`;
 }
 
@@ -793,14 +838,18 @@ function wireActions(container, rec) {
   const key = rec._dedupeKey;
   const cleanup = new CleanupRegistry();
 
-  // Back
-  cleanup.addListener(qs('[data-action="back"]', container), 'click', () => {
-    if (document.referrer && document.referrer.includes(location.host)) {
-      history.back();
-    } else {
-      navigate('/');
-    }
-  });
+  // Back — absent in the embedded map split-view panel (showNav: false),
+  // which has its own close (✕) affordance instead.
+  const backBtn = qs('[data-action="back"]', container);
+  if (backBtn) {
+    cleanup.addListener(backBtn, 'click', () => {
+      if (document.referrer && document.referrer.includes(location.host)) {
+        history.back();
+      } else {
+        navigate('/companies');
+      }
+    });
+  }
 
   // Bookmark
   const bookmarkBtn = qs('[data-action="bookmark"]', container);
@@ -1137,13 +1186,23 @@ export async function mountCompany360(container, params) {
     return null;
   }
 
+  return renderCompanyDetail(container, rec);
+}
+
+/**
+ * Renders the full Company 360 profile into `container` for `rec`. Shared
+ * by the standalone routed page (mountCompany360, setTitle: true) and the
+ * map's embedded split-view panel (companyPanel.js, setTitle: false) so
+ * both render identical content from one code path.
+ */
+export function renderCompanyDetail(container, rec, { setTitle = true } = {}) {
   workspace.markRecent(rec._dedupeKey, { name: rec.companyName, category: rec.category });
-  document.title = `${rec.companyName} · ESDS BOIP`;
+  if (setTitle) document.title = `${rec.companyName} · ChanakyaIQ`;
   announce(`Viewing ${rec.companyName}`, 'polite');
 
   container.innerHTML = `
     <div class="c360-page">
-      ${renderHeader(rec)}
+      ${renderHeader(rec, { showNav: setTitle })}
       <div class="c360-grid">
         <aside class="c360-col c360-col-left">
           ${renderLeftColumn(rec)}
@@ -1153,9 +1212,11 @@ export async function mountCompany360(container, params) {
           ${renderICP(rec)}
           ${renderESDSFit(rec)}
           ${renderMaturitySection()}
+          ${renderTechnology(rec)}
           ${renderBranchNetwork(rec)}
           ${renderTechStack(rec)}
           ${renderPainPoints(rec)}
+          ${renderRecentActivity()}
         </section>
         <aside class="c360-col c360-col-right">
           ${renderSignalsPanel(rec)}
@@ -1177,7 +1238,7 @@ export async function mountCompany360(container, params) {
   return () => {
     if (container._radar) { try { container._radar.dispose(); } catch {} container._radar = null; }
     cleanup.dispose();
-    document.title = 'ESDS BFSI Geo Intelligence Dashboard';
+    if (setTitle) document.title = 'ChanakyaIQ';
   };
 }
 

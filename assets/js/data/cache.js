@@ -14,6 +14,16 @@
  *   cache.query({ category: 'NBFC', state: 'Maharashtra' });
  */
 
+// Data-sparseness check, shared with companyDirectory.js (which bypasses
+// query() for its own local filtering) so both places agree on exactly what
+// "no meaningful data" means. Computed from fields already present on every
+// record (never a stored/cached flag), so an org that gets one of these four
+// populated by a future import becomes visible again with no re-flagging step.
+export function hasMinimumData(r) {
+  return r.revenue != null || r.itSpend != null || r.allocatedBudget != null
+    || !!(r.ceo || r.cto || r.cio);
+}
+
 export class DataCache {
   /**
    * Cross-module resolvers for cross-cutting filter concerns
@@ -262,10 +272,68 @@ export class DataCache {
       results = results.filter(r => filters.opportunityTags.some(t => (r.opportunityTags || []).includes(t)));
     }
 
-    // Leadership text filters
-    if (filters.ceo) { const q = filters.ceo.toLowerCase(); results = results.filter(r => r.ceo && r.ceo.toLowerCase().includes(q)); }
-    if (filters.cto) { const q = filters.cto.toLowerCase(); results = results.filter(r => r.cto && r.cto.toLowerCase().includes(q)); }
-    if (filters.cio) { const q = filters.cio.toLowerCase(); results = results.filter(r => r.cio && r.cio.toLowerCase().includes(q)); }
+    // Business Intent Engine (backend/src/modules/businessIntent/) — same
+    // plain-field pattern as the ICP filters directly above; both fields
+    // are populated by GET /organizations once POST /business-intent/run
+    // has scored a record at least once (defaults: 'Not Scored' / null).
+    if (filters.businessIntentClassifications && filters.businessIntentClassifications.length) {
+      results = results.filter(r => filters.businessIntentClassifications.includes(r.businessIntentClassification));
+    }
+    if (filters.finalPriorities && filters.finalPriorities.length) {
+      results = results.filter(r => filters.finalPriorities.includes(r.finalPriority));
+    }
+
+    // Qualification status — this is *the* mechanism behind the dashboard's
+    // "qualified organizations only by default" view (filters.js seeds its
+    // default _filters state with { isQualified: true }; the "Show all"
+    // toggle removes this key). cache.js itself stays a neutral filter
+    // engine — the default-view *policy* lives in the UI layer, not here.
+    if (filters.isQualified != null) {
+      results = results.filter(r => r.isQualified === filters.isQualified);
+    }
+
+    // Data-sparse visibility filter — same default-view mechanism as
+    // isQualified directly above (filters.js seeds _filters with
+    // hasMinimumData:true by default; the "Show all" toggle clears it).
+    if (filters.hasMinimumData === true) {
+      results = results.filter(hasMinimumData);
+    }
+
+    // Branch count range (mirrors the revenue/employee range pattern above).
+    if (filters.branchCountMin != null) results = results.filter(r => r.branchTotal >= filters.branchCountMin);
+    if (filters.branchCountMax != null) results = results.filter(r => r.branchTotal != null && r.branchTotal <= filters.branchCountMax);
+
+    // IT / Cloud spend range (₹ Cr) — same pattern as revenue/employees above.
+    if (filters.itSpendMin != null) results = results.filter(r => r.itSpend >= filters.itSpendMin);
+    if (filters.itSpendMax != null) results = results.filter(r => r.itSpend != null && r.itSpend <= filters.itSpendMax);
+    if (filters.cloudSpendMin != null) results = results.filter(r => r.cloudSpend >= filters.cloudSpendMin);
+    if (filters.cloudSpendMax != null) results = results.filter(r => r.cloudSpend != null && r.cloudSpend <= filters.cloudSpendMax);
+
+    // Leadership / contact availability — presence checks, not text search.
+    // Values arrive as strings ('true'/'false'), same as every other
+    // <select>-sourced filter (e.g. deltaMin) — not real booleans on the wire.
+    if (filters.hasLeadership === 'true') {
+      results = results.filter(r => !!(r.ceo || r.cto || r.cio || r.chairman));
+    } else if (filters.hasLeadership === 'false') {
+      results = results.filter(r => !(r.ceo || r.cto || r.cio || r.chairman));
+    }
+    if (filters.hasContact === 'true') {
+      results = results.filter(r => !!(r.pointOfContact || r.contactEmail || r.contactPhone));
+    } else if (filters.hasContact === 'false') {
+      results = results.filter(r => !(r.pointOfContact || r.contactEmail || r.contactPhone));
+    }
+
+    // 3-state Listed/Unlisted/Unknown — see organizations.mapper.ts for why
+    // this isn't a binary guess (51% of orgs have no ownership_type on file).
+    if (filters.listedStatus3) {
+      results = results.filter(r => r.listedStatus === filters.listedStatus3);
+    }
+
+    // Sector (Stage 8) — real and generic, but a no-op today since every
+    // imported org is sector "BFSI".
+    if (filters.sector) {
+      results = results.filter(r => r.sector === filters.sector);
+    }
 
     // Pain points keyword filter
     if (filters.painPoint) {
