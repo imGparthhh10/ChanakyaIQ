@@ -1202,8 +1202,33 @@
 }
 
 /* ─────────────── ANALYTICS ─────────────── */
-/* Relocated into #charts-section (Analytics Intelligence) — a row of 3
-   quick-glance cards rather than a sidebar, so no more sticky positioning. */
+/* #analytics-page's direct children (intro header, KPI grid, quick
+   analytics, ICP portfolio, detailed charts) are siblings, not nested
+   inside one wrapper -- this is what supplies the vertical spacing
+   between them, matching .charts-section's own internal gap so the
+   rhythm stays identical whichever section ends up first.
+
+   IMPORTANT: an ID selector's `display` beats the browser's built-in
+   `[hidden] { display: none }` rule (higher specificity), so setting
+   this element's `hidden` property in JS (router.js's showPersistent())
+   had NO visual effect -- the page stayed permanently visible, flex-
+   rendered, on every single route, the whole time. The [hidden] rule
+   below (matching #page-mount's existing defensive pattern) is what
+   actually fixes that; every persistent route container gets the same
+   guard now specifically so this exact bug class can't reappear on any
+   of them by adding an unguarded display rule the way this one was. */
+#analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+#home-page[hidden],
+#companies-atlas-page[hidden],
+#analytics-page[hidden],
+#recommendations-page[hidden] {
+  display: none !important;
+}
+/* A row of 3 quick-glance cards rather than a sidebar, so no sticky positioning. */
 .analytics-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

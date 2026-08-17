@@ -58,8 +58,12 @@
         <div id="page-mount" hidden></div>
 
         <!-- ═══════════════ HOMEPAGE (default landing view) ═══════════════ -->
-        <!-- Content rendered by assets/js/pages/home.js — mountHomeContent() -->
-        <div id="home-page"></div>
+        <!-- Content rendered by assets/js/pages/home.js — mountHomeContent().
+             hidden by default like every other persistent container -- the
+             router's initial render() (a queued microtask) sets this
+             correctly at runtime regardless, but the static default should
+             match reality until that first tick runs. -->
+        <div id="home-page" hidden></div>
 
         <!-- ═══════════════ COMPANIES & GEO ATLAS ═══════════════ -->
         <div id="companies-atlas-page" hidden>
@@ -114,7 +118,7 @@
               <button class="chip-btn" data-map-view="pins">Pins</button>
             </div>
           </div>
-Get-AppLockerPolicy -Effective -Xml          <div class="map-split-row" id="map-split-row">
+          <div class="map-split-row" id="map-split-row">
             <div class="map-canvas-wrap">
               <div id="map-canvas" class="map-canvas skeleton-map" role="img" aria-label="Map placeholder">
                 <div class="map-placeholder">
