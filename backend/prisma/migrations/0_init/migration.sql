@@ -155,7 +155,7 @@ CREATE TABLE "crawl_jobs" (
 CREATE TABLE "crawl_sources" (
     "crawl_source_id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "organization_id" UUID NOT NULL,
-    "sourceType" "document_type" NOT NULL,
+    "source_type" "document_type" NOT NULL,
     "url" TEXT NOT NULL,
     "discovered_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
@@ -213,7 +213,7 @@ CREATE TABLE "documents" (
     "document_id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "organization_id" UUID NOT NULL,
     "crawl_job_id" UUID,
-    "documentType" "document_type" NOT NULL,
+    "document_type" "document_type" NOT NULL,
     "url" TEXT,
     "file_format" TEXT,
     "storage_path" TEXT NOT NULL,
@@ -457,14 +457,14 @@ CREATE TABLE "organizations" (
     "domain" TEXT,
     "sector_id" SMALLINT,
     "subsector_id" SMALLINT,
-    "ownershipType" "ownership_type",
+    "ownership_type" "ownership_type",
     "incorporation_year" SMALLINT,
     "cin_number" TEXT,
     "status" "org_status" NOT NULL DEFAULT 'NEW',
     "source_of_entry" TEXT,
     "is_duplicate_of" UUID,
     "icp_score" DECIMAL(5,2),
-    "opportunityTier" "opportunity_tier",
+    "opportunity_tier" "opportunity_tier",
     "confidence_score" DECIMAL(5,2),
     "created_by" UUID,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -697,7 +697,7 @@ CREATE TABLE "technology_profiles" (
 CREATE TABLE "tier_history" (
     "tier_history_id" BIGSERIAL NOT NULL,
     "organization_id" UUID NOT NULL,
-    "opportunityTier" "opportunity_tier" NOT NULL,
+    "opportunity_tier" "opportunity_tier" NOT NULL,
     "recorded_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "tier_history_pkey" PRIMARY KEY ("tier_history_id")
@@ -775,7 +775,7 @@ CREATE UNIQUE INDEX "document_chunks_document_id_chunk_index_key" ON "document_c
 CREATE UNIQUE INDEX "document_versions_document_id_version_number_key" ON "document_versions"("document_id", "version_number");
 
 -- CreateIndex
-CREATE INDEX "idx_documents_org_type" ON "documents"("organization_id", "documentType");
+CREATE INDEX "idx_documents_org_type" ON "documents"("organization_id", "document_type");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "documents_organization_id_checksum_key" ON "documents"("organization_id", "checksum");
@@ -814,7 +814,7 @@ CREATE UNIQUE INDEX "opportunity_tags_tag_name_key" ON "opportunity_tags"("tag_n
 CREATE UNIQUE INDEX "organizations_domain_key" ON "organizations"("domain");
 
 -- CreateIndex
-CREATE INDEX "idx_org_name_trgm" ON "organizations" USING GIN ("legal_name" ginTrgmOps);
+CREATE INDEX "idx_org_name_trgm" ON "organizations" USING GIN ("legal_name" gin_trgm_ops);
 
 -- CreateIndex
 CREATE INDEX "idx_org_score" ON "organizations"("icp_score" DESC);
