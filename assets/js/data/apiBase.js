@@ -7,4 +7,10 @@
  * other). data.js re-exports this for existing `from '../data/data.js'`
  * imports elsewhere, so nothing else needs to change.
  */
-export const API_BASE = 'http://localhost:4000/api';
+// Render backend URL — replace this once the Render Web Service exists;
+// its dashboard shows the real URL as https://<your-service-name>.onrender.com.
+const PROD_API_BASE = 'https://REPLACE_WITH_RENDER_URL.onrender.com/api';
+
+export const API_BASE = (typeof location !== 'undefined' && location.hostname === 'localhost')
+  ? 'http://localhost:4000/api'
+  : PROD_API_BASE;
