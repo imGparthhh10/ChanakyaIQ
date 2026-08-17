@@ -173,7 +173,31 @@
       "Bash(FORCE_RESEED=true docker compose run --rm -e FORCE_RESEED=true seed_loader)",
       "Bash(curl -s -i http://localhost:4000/api/health)",
       "Bash(curl -s -i -X OPTIONS http://localhost:4000/api/auth/login -H \"Origin: http://localhost:8080\" -H \"Access-Control-Request-Method: POST\")",
-      "Bash(docker stats *)"
+      "Bash(docker stats *)",
+      "Bash(python3 -m py_compile services/extractor/fields.py services/extractor/main.py shared/models.py)",
+      "Bash(python3 -m py_compile services/db_writer/db.py)",
+      "Bash(python3 extraction_selftest.py)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3)",
+      "Bash(docker cp *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec -w /app enrichment_pipeline-db_writer-1 python3 db_writer_selftest2.py)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec enrichment_pipeline-db_writer-1 rm -f /app/db_writer_selftest2.py)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(mkdir -p \"/c/Users/PARTH~1.GHO/AppData/Local/Temp/claude/C--Users-Parth-ghongane-OneDrive---ESDS-Software-Solution-Limited-Desktop-ESDS-Dashbord/8ce64e57-de1e-499e-8599-ecbc0e1c0db7/scratchpad\" && echo ok)",
+      "Bash(node build_concept_note.js)",
+      "Bash(npm -v)",
+      "Bash(npm config *)",
+      "Bash(python \"C:\\\\Users\\\\Parth.ghongane\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\21698f5c-5640-407c-a952-a15aa2d3c122\\\\2fcd079c-dcb4-4718-aa3f-c11ace465bfa\\\\skills\\\\docx\\\\scripts\\\\office\\\\soffice.py\" --headless --convert-to pdf ChanakyaIQ_Concept_Note.docx)",
+      "Bash(where soffice *)",
+      "Bash(where soffice.exe)",
+      "Read(//c/Program Files/LibreOffice/program/**)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/LibreOffice/program/**)",
+      "Bash(where pandoc *)",
+      "Bash(pandoc --version)",
+      "Bash(python -c \"import docx; print\\(docx.__file__\\)\")",
+      "Bash(python -c \"print\\(open\\('table_dump.txt', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "Bash(start \"\" \"c:\\\\Users\\\\Parth.ghongane\\\\OneDrive - ESDS Software Solution Limited\\\\Desktop\\\\ESDS Dashbord\\\\docs\\\\ChanakyaIQ_Concept_Note.docx\")",
+      "PowerShell(Get-Process WINWORD -ErrorAction SilentlyContinue)"
     ]
   }
 }
