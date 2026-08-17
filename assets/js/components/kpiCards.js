@@ -105,18 +105,26 @@ function computeExecutiveKPIs(cache, records) {
   const stateCounts = cache.stateCounts ? cache.stateCounts() : {};
   const stateCountValues = Object.values(stateCounts).sort((a, b) => b - a).slice(0, 10);
 
-  // dataEngine.branches is the flat, unfiltered branch store -- scope it to
-  // just the companies actually in `data` (the current filtered view), same
-  // as every other KPI here, so "Total Companies" and its branch count in
-  // the merged card can never read as mismatched the way the old separate
-  // "Total Companies"/"Total Branches" cards used to (see filters.js's
-  // "75 companies / 3,120 branches" comment for the original version of
-  // this exact inconsistency).
   const visibleKeys = new Set(data.map((r) => r._dedupeKey).filter(Boolean));
   const visibleBranches = (dataEngine.branches || []).filter((b) => visibleKeys.has(b.parentKey));
 
+  // The Total Companies card itself is deliberately the one KPI that does
+  // NOT respect the active filter -- it reads as "how big is the whole
+  // platform", so it always shows the platform's true totals (every
+  // organization/branch dataEngine knows about), not whatever subset is
+  // currently filtered/qualified. Every other KPI (revenue, ICP qualified,
+  // etc.) stays scoped to `data` as before. allRecords/allBranches are
+  // used only for this one card's totalCompanies/totalBranches/totalStates
+  // below -- `data`/`visibleBranches` above are untouched and still drive
+  // every other card, including this card's own icpQualifiedCount ratio.
+  const allRecords = cache.getAll();
+  const allBranches = dataEngine.branches || [];
+
   return {
     totalCompanies: n,
+    // Grand, filter-independent totals -- consumed only by the Total
+    // Companies card itself (see the comment above allRecords/allBranches).
+    grandTotalCompanies: allRecords.length,
     totalRevenue,
     totalMarketCap,
     totalIT,
@@ -143,9 +151,10 @@ function computeExecutiveKPIs(cache, records) {
     sparkCatRevenue: catRevSorted,
     sparkStateCounts: stateCountValues,
 
-    // Branch-level metrics — scoped to visibleBranches (see above), 0 until
-    // Banking Master's branch data is loaded.
-    totalBranches: visibleBranches.length,
+    // Branch-level metrics for the Total Companies card — deliberately the
+    // platform's true totals (allBranches/allRecords), not scoped to the
+    // active filter. See the comment above allRecords/allBranches.
+    totalBranches: allBranches.length,
     totalStates: (() => {
       // Canonicalize common state-name variants so duplicates don't inflate the count
       const ALIAS = {
@@ -160,8 +169,8 @@ function computeExecutiveKPIs(cache, records) {
         return ALIAS[k] || k;
       };
       const set = new Set();
-      for (const b of visibleBranches) if (b.state) set.add(canon(b.state));
-      for (const r of (data || [])) if (r && r.state) set.add(canon(r.state));
+      for (const b of allBranches) if (b.state) set.add(canon(b.state));
+      for (const r of allRecords) if (r && r.state) set.add(canon(r.state));
       return set.size;
     })(),
     citiesCovered: (() => {
@@ -257,10 +266,15 @@ function buildCardDefs(kpis) {
       // Merged with the former standalone "Total Branches" card so the
       // headline number (companies) and its branch-network detail read
       // together instead of as two cards that could visually disagree.
+      // Uses grandTotalCompanies (platform-wide, filter-independent), not
+      // kpis.totalCompanies (which stays filtered for other cards' ratios,
+      // e.g. the ICP Qualified card's "% of companies" below) -- this is
+      // the one KPI meant to answer "how big is the whole platform",
+      // unaffected by whatever filter happens to be active.
       id: 'total-companies',
       label: 'Total Companies',
-      value: fmtNumber(kpis.totalCompanies),
-      rawValue: kpis.totalCompanies,
+      value: fmtNumber(kpis.grandTotalCompanies),
+      rawValue: kpis.grandTotalCompanies,
       sub: kpis.totalBranches > 0
         ? `${fmtNumber(kpis.totalBranches)} branches · ${kpis.totalStates} states`
         : 'Unique parent companies',

@@ -441,10 +441,9 @@
 .page-header-right { display: flex; gap: var(--sp-2); }
 
 /* ─────────────── EXECUTIVE KPI CARDS ─────────────── */
-/* No margin-bottom here — .kpi-section now lives inside .charts-section's
-   flex column, which already provides identical spacing (gap:var(--sp-4))
-   between it and its siblings; adding a margin on top of that would double
-   the gap and change the layout this move is supposed to preserve exactly. */
+/* No margin-top/bottom on .kpi-section itself -- #analytics-page's own
+   flex column (gap:var(--sp-4)) already provides spacing between it and
+   its siblings; adding a margin here would double that gap. */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -5667,6 +5666,14 @@
   margin-top: var(--sp-4);
 }
 .icp-panel { min-width: 0; }
+.icp-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.icp-panel-head .icp-panel-title { margin-bottom: 0; }
 .icp-panel-title {
   font-size: var(--fs-sm);
   font-weight: var(--fw-semi);
@@ -5675,6 +5682,14 @@
   letter-spacing: 0.04em;
   margin-bottom: var(--sp-3);
 }
+.icp-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0 0;
+}
+.icp-pager-btns { display: flex; gap: var(--sp-2); }
 .icp-tier-list { display: flex; flex-direction: column; gap: var(--sp-3); }
 .icp-tier-row {
   display: grid;

@@ -17,15 +17,33 @@
  * I filtered to right now".
  */
 
-import { bus }        from '../utils/eventBus.js';
-import { qs }         from '../utils/dom.js';
-import { escapeHTML } from '../utils/sanitize.js';
-import { dataEngine } from '../data/data.js';
-import { tierColor }  from '../utils/icpBadge.js';
+import { bus }         from '../utils/eventBus.js';
+import { qs }          from '../utils/dom.js';
+import { escapeHTML }  from '../utils/sanitize.js';
+import { dataEngine }  from '../data/data.js';
+import { tierColor }   from '../utils/icpBadge.js';
+import { Icon }         from './icons.js';
+import { loadXLSX }     from '../export/exportLoader.js';
+import { timestampedName } from '../export/formatters.js';
+import { toast }        from './toast.js';
 
 // Order matches icp.service.ts's tierForScore() thresholds, best-fit first.
 const TIER_ORDER = ['Strategic', 'Tier 1', 'Tier 2', 'Tier 3', 'Watchlist'];
-const TABLE_LIMIT = 25;
+const PAGE_SIZE = 25;
+
+function svgIcon(name) {
+  const el = Icon(name);
+  const tmp = document.createElement('div');
+  tmp.appendChild(el);
+  return tmp.innerHTML;
+}
+
+// Current page (0-based) and the full qualified+sorted list behind it --
+// kept at module scope so the Prev/Next handlers and the Export button
+// don't need to re-filter/re-sort the whole dataset on every click, and
+// so Export always exports every qualified org, not just the visible page.
+let _page = 0;
+let _qualified = [];
 
 function tierCounts(records) {
   const counts = new Map(TIER_ORDER.map(t => [t, 0]));
@@ -69,20 +87,20 @@ function renderTierBreakdown(records) {
   return `<div class="icp-tier-list">${rows}</div>${note}`;
 }
 
-function renderQualifiedTable(records) {
-  const qualified = records
-    .filter(r => r.isQualified === true)
-    .sort((a, b) => (b.icpScore ?? -1) - (a.icpScore ?? -1));
-
-  if (!qualified.length) {
+function renderQualifiedTable() {
+  if (!_qualified.length) {
     return `<p class="icp-note">No organizations have passed ICP qualification yet.</p>`;
   }
 
-  const shown = qualified.slice(0, TABLE_LIMIT);
+  const totalPages = Math.max(1, Math.ceil(_qualified.length / PAGE_SIZE));
+  _page = Math.min(Math.max(_page, 0), totalPages - 1);
+
+  const start = _page * PAGE_SIZE;
+  const shown = _qualified.slice(start, start + PAGE_SIZE);
   const rows = shown.map((r, i) => {
     const color = tierColor(r.opportunityTier);
     return `<tr>
-      <td class="mt-num">${i + 1}</td>
+      <td class="mt-num">${start + i + 1}</td>
       <td><a class="mt-row-name" href="#/company/${encodeURIComponent(r._dedupeKey)}">${escapeHTML(r.companyName)}</a></td>
       <td>${r.opportunityTier
         ? `<span class="mt-score-chip" style="color:${color};border-color:${color}44">${escapeHTML(r.opportunityTier)}</span>`
@@ -94,10 +112,6 @@ function renderQualifiedTable(records) {
     </tr>`;
   }).join('');
 
-  const more = qualified.length > TABLE_LIMIT
-    ? `<p class="icp-note">Showing top ${TABLE_LIMIT} of ${qualified.length} qualified organizations — see <a href="#/directory">Company Directory</a> for the full list.</p>`
-    : '';
-
   return `
     <div class="icp-table-wrap">
       <table class="mt-table">
@@ -107,7 +121,59 @@ function renderQualifiedTable(records) {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>${more}`;
+    </div>
+    <div class="icp-pager">
+      <span class="mt-muted">Page ${_page + 1} of ${totalPages} (${_qualified.length} qualified)</span>
+      <div class="icp-pager-btns">
+        <button class="btn btn-ghost btn-sm" id="icp-page-prev" ${_page <= 0 ? 'disabled' : ''}>${svgIcon('chevronLeft')} Prev</button>
+        <button class="btn btn-ghost btn-sm" id="icp-page-next" ${_page >= totalPages - 1 ? 'disabled' : ''}>Next ${svgIcon('chevronRight')}</button>
+      </div>
+    </div>`;
+}
+
+function renderTablePage() {
+  const tableEl = qs('#icp-qualified-table');
+  if (!tableEl) return;
+  tableEl.innerHTML = renderQualifiedTable();
+
+  qs('#icp-page-prev', tableEl)?.addEventListener('click', () => { _page--; renderTablePage(); });
+  qs('#icp-page-next', tableEl)?.addEventListener('click', () => { _page++; renderTablePage(); });
+}
+
+const EXPORT_COLUMNS = [
+  ['#', null],
+  ['Company', 'companyName'],
+  ['Tier', 'opportunityTier'],
+  ['ICP Score', 'icpScore'],
+  ['Revenue (₹ Cr)', 'revenue'],
+  ['Category', 'category'],
+  ['State', 'state'],
+];
+
+// Exports every qualified organization, not just the current page --
+// matching how Export works everywhere else in the app (the full
+// relevant dataset, independent of on-screen pagination/scroll).
+async function exportQualified() {
+  if (!_qualified.length) {
+    toast.error('Nothing to export', 'No organizations have passed ICP qualification yet.');
+    return;
+  }
+  try {
+    const XLSX = await loadXLSX();
+    const header = EXPORT_COLUMNS.map(([h]) => h);
+    const rows = _qualified.map((r, i) => EXPORT_COLUMNS.map(([, key]) => {
+      if (key === null) return i + 1;
+      const val = r[key];
+      return val == null ? '' : val;
+    }));
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'ICP Qualified');
+    XLSX.writeFile(wb, timestampedName('ChanakyaIQ_ICP_Qualified', 'xlsx'));
+    toast.success('Exported', `${_qualified.length} qualified organizations`);
+  } catch (err) {
+    toast.error('Export failed', err.message);
+  }
 }
 
 function render() {
@@ -125,12 +191,19 @@ function render() {
     countEl.textContent = `${qualifiedCount} of ${records.length} organizations qualified`;
   }
 
+  _qualified = records
+    .filter(r => r.isQualified === true)
+    .sort((a, b) => (b.icpScore ?? -1) - (a.icpScore ?? -1));
+  _page = 0; // fresh data (e.g. after an ICP re-run) starts back at page 1
+
   tierEl.innerHTML = renderTierBreakdown(records);
-  tableEl.innerHTML = renderQualifiedTable(records);
+  renderTablePage();
 }
 
 /** Wired once at boot, like every other analytics component. */
 export function initIcpSection() {
   bus.on('data:ready', render);
   if (dataEngine.cache) render();
+
+  qs('#icp-export-btn')?.addEventListener('click', exportQualified);
 }

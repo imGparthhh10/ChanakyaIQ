@@ -146,12 +146,90 @@ Get-AppLockerPolicy -Effective -Xml          <div class="map-split-row" id="map-
         <!-- ═══════════════ ANALYTICS INTELLIGENCE ═══════════════ -->
         <div id="analytics-page" hidden>
 
+        <!-- Page header — was charts-section's header, promoted here since
+             charts-section is no longer the first thing on the page (the
+             KPI grid is). charts-section keeps its own small header below,
+             just for its tab bar. -->
+        <div class="charts-header glass-panel">
+          <div class="charts-header-left">
+            <h2 class="section-title"><span class="dot dot-violet"></span> Analytics Intelligence</h2>
+            <p class="section-sub">Executive KPIs, ICP portfolio, and interactive charts — click any chart segment to drill down.</p>
+          </div>
+        </div>
+
+        <!-- KPI Section — at-a-glance executive numbers, first on the page. -->
+        <section id="kpi-section" class="kpi-section" aria-label="Key performance indicators">
+          <div class="kpi-grid" id="kpi-grid">
+            <!-- Executive KPI cards injected by kpiCards.js — 12 skeleton placeholders -->
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+            <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
+          </div>
+        </section>
+
+        <!-- Quick Analytics (3 compact charts) — secondary at-a-glance layer,
+             right after the KPI numbers. -->
+        <aside id="analytics-section" class="analytics-section" aria-label="Quick analytics">
+          <div class="glass-panel analytics-card">
+            <div class="analytics-head">
+              <h2 class="section-title"><span class="dot dot-violet"></span> Sector Mix</h2>
+            </div>
+            <div class="chart-slot" id="chart-sector-mix"><div class="sk sk-donut"></div></div>
+          </div>
+          <div class="glass-panel analytics-card">
+            <div class="analytics-head">
+              <h2 class="section-title"><span class="dot dot-emerald"></span> Revenue Distribution</h2>
+            </div>
+            <div class="chart-slot" id="chart-revenue-dist"><div class="sk sk-bars"></div></div>
+          </div>
+          <div class="glass-panel analytics-card">
+            <div class="analytics-head">
+              <h2 class="section-title"><span class="dot dot-amber"></span> Top States</h2>
+            </div>
+            <div class="chart-slot" id="chart-top-states"><div class="sk sk-list"></div></div>
+          </div>
+        </aside>
+
+        <!-- ICP Portfolio — tier breakdown + qualified companies.
+             Rendered by assets/js/components/icpSection.js. -->
+        <section id="icp-section" class="icp-section" aria-label="ICP portfolio">
+          <div class="glass-panel">
+            <div class="analytics-head">
+              <h2 class="section-title"><span class="dot dot-emerald"></span> ICP Portfolio</h2>
+              <span class="section-sub" id="icp-qualified-count">Loading…</span>
+            </div>
+            <div class="icp-grid">
+              <div class="icp-panel">
+                <h3 class="icp-panel-title">Tier Breakdown</h3>
+                <div id="icp-tier-breakdown"><div class="sk sk-bars"></div></div>
+              </div>
+              <div class="icp-panel">
+                <div class="icp-panel-head">
+                  <h3 class="icp-panel-title">Qualified Companies</h3>
+                  <button class="btn btn-ghost btn-sm" id="icp-export-btn" aria-label="Export qualified companies">
+                    <span class="btn-ico" aria-hidden="true">⬇</span> Export
+                  </button>
+                </div>
+                <div id="icp-qualified-table"><div class="sk sk-list"></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- ═══════════════ FULL ANALYTICS CHARTS ═══════════════ -->
         <section id="charts-section" class="charts-section" aria-label="Analytics charts">
           <div class="charts-header glass-panel">
             <div class="charts-header-left">
-              <h2 class="section-title"><span class="dot dot-violet"></span> Analytics Intelligence</h2>
-              <p class="section-sub">Interactive charts powered by Apache ECharts — click any segment to drill down.</p>
+              <h2 class="section-title"><span class="dot dot-violet"></span> Detailed Charts</h2>
             </div>
             <div class="charts-header-right">
               <div class="chart-tab-bar" id="chart-tab-bar">
@@ -210,70 +288,6 @@ Get-AppLockerPolicy -Effective -Xml          <div class="map-split-row" id="map-
             </div>
           </div>
 
-          <!-- KPI Section — relocated here from the top of the home page so
-               the Analytics Intelligence section is the single home for both
-               the executive KPI summary and the detailed charts below it. -->
-          <section id="kpi-section" class="kpi-section" aria-label="Key performance indicators">
-            <div class="kpi-grid" id="kpi-grid">
-              <!-- Executive KPI cards injected by kpiCards.js — 12 skeleton placeholders -->
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-              <div class="kpi-card glass-card skeleton-card"><div class="sk sk-line w-40"></div><div class="sk sk-num"></div><div class="sk sk-line w-70"></div></div>
-            </div>
-          </section>
-
-          <!-- ICP Portfolio — tier breakdown + qualified companies.
-               Rendered by assets/js/components/icpSection.js. -->
-          <section id="icp-section" class="icp-section" aria-label="ICP portfolio">
-            <div class="glass-panel">
-              <div class="analytics-head">
-                <h2 class="section-title"><span class="dot dot-emerald"></span> ICP Portfolio</h2>
-                <span class="section-sub" id="icp-qualified-count">Loading…</span>
-              </div>
-              <div class="icp-grid">
-                <div class="icp-panel">
-                  <h3 class="icp-panel-title">Tier Breakdown</h3>
-                  <div id="icp-tier-breakdown"><div class="sk sk-bars"></div></div>
-                </div>
-                <div class="icp-panel">
-                  <h3 class="icp-panel-title">Qualified Companies</h3>
-                  <div id="icp-qualified-table"><div class="sk sk-list"></div></div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Quick Analytics (3 compact charts) — placed last so the tabbed
-               chart panels above read as the primary analytics surface. -->
-          <aside id="analytics-section" class="analytics-section" aria-label="Quick analytics">
-            <div class="glass-panel analytics-card">
-              <div class="analytics-head">
-                <h2 class="section-title"><span class="dot dot-violet"></span> Sector Mix</h2>
-              </div>
-              <div class="chart-slot" id="chart-sector-mix"><div class="sk sk-donut"></div></div>
-            </div>
-            <div class="glass-panel analytics-card">
-              <div class="analytics-head">
-                <h2 class="section-title"><span class="dot dot-emerald"></span> Revenue Distribution</h2>
-              </div>
-              <div class="chart-slot" id="chart-revenue-dist"><div class="sk sk-bars"></div></div>
-            </div>
-            <div class="glass-panel analytics-card">
-              <div class="analytics-head">
-                <h2 class="section-title"><span class="dot dot-amber"></span> Top States</h2>
-              </div>
-              <div class="chart-slot" id="chart-top-states"><div class="sk sk-list"></div></div>
-            </div>
-          </aside>
         </section>
 
         </div><!-- /#analytics-page -->
