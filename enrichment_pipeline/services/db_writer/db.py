@@ -1,10 +1,10 @@
 """Postgres access for db_writer -- writes into the dashboard's real
 `esds_eip_dev` database (organizations / addresses / financial_metrics /
-technology_metrics via metric_definitions), the same schema and the same
-discipline every other import in this platform uses. This replaced an
-earlier version that wrote into an isolated `enrichment` database no
-dashboard page ever reads from -- see enrichment_pipeline/README.md for
-the incident writeup.
+technology_metrics via metric_definitions / leadership_profiles), the
+same schema and the same discipline every other import in this platform
+uses. This replaced an earlier version that wrote into an isolated
+`enrichment` database no dashboard page ever reads from -- see
+enrichment_pipeline/README.md for the incident writeup.
 
 No parallel schema, no new tables: an enriched entity either matches an
 existing organization (by normalized legal name, scoped to BFSI) or
@@ -47,6 +47,7 @@ def normalize_for_dedup(name: str) -> str:
 # backend/src/utils/metricFieldMap.ts's FINANCIAL_METRIC_FIELDS split).
 FINANCIAL_METRIC_FIELDS = {
     "revenue_inr_cr": "revenue",
+    "net_profit_inr_cr": "net_profit",
     "branch_count": "branch_count",
     "employee_count": "employee_count",
 }
@@ -61,6 +62,18 @@ _NEW_METRIC_DEFAULTS = {
     # metric_key -> (display_name, category, unit) for any of the above
     # that metric_definitions doesn't already have a row for.
     "digital_capex": ("Digital Capex", "Technology", "INR_CR"),
+}
+
+# ExtractedRecord field -> leadership_profiles column. Matches the real
+# table's 4 columns exactly (see shared/models.py's ExtractedRecord
+# comment) -- one row per org, so this is a genuine single-row upsert,
+# not the multi-row-per-metric shape financial_metrics/technology_metrics
+# have.
+LEADERSHIP_COLUMNS = {
+    "ceo_name": "ceo_name",
+    "cto_name": "cto_name",
+    "cio_name": "cio_name",
+    "chairman_name": "chairman_name",
 }
 
 
@@ -227,8 +240,73 @@ class Database:
             wrote_any = created_org
             wrote_any |= self._upsert_metrics(cur, org_id, record, "financial_metrics", FINANCIAL_METRIC_FIELDS, overwrite)
             wrote_any |= self._upsert_metrics(cur, org_id, record, "technology_metrics", TECHNOLOGY_METRIC_FIELDS, overwrite)
+            wrote_any |= self._update_address_line(cur, org_id, record, overwrite)
+            wrote_any |= self._upsert_leadership(cur, org_id, record, overwrite)
 
         return wrote_any
+
+    def _update_address_line(self, cur, org_id: str, record: dict[str, Any], overwrite: bool) -> bool:
+        """Fills in the free-text address line on the org's existing HQ
+        address row (created above from state alone) -- never creates a
+        second address row, and never overwrites a real address already
+        on file unless overwrite=True."""
+        addr = record.get("head_office_address")
+        if not addr or str(addr).strip().upper() == "N/A":
+            return False
+        cur.execute(
+            "SELECT address_id, address_line FROM addresses WHERE organization_id = %s AND is_headquarters",
+            (org_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            # No HQ address row exists yet (state didn't resolve to a real
+            # state_id) -- nothing to attach the address line to. Not an
+            # error: this org just won't get an address this run.
+            return False
+        address_id, existing_line = row
+        if existing_line and not overwrite:
+            return False
+        cur.execute("UPDATE addresses SET address_line = %s WHERE address_id = %s", (str(addr).strip(), address_id))
+        return True
+
+    def _upsert_leadership(self, cur, org_id: str, record: dict[str, Any], overwrite: bool) -> bool:
+        incoming = {}
+        for record_field, column in LEADERSHIP_COLUMNS.items():
+            val = record.get(record_field)
+            if val and str(val).strip() and str(val).strip().upper() != "N/A":
+                incoming[column] = str(val).strip()
+        if not incoming:
+            return False
+
+        cur.execute(
+            "SELECT ceo_name, cto_name, cio_name, chairman_name FROM leadership_profiles WHERE organization_id = %s",
+            (org_id,),
+        )
+        row = cur.fetchone()
+        existing = dict(zip(("ceo_name", "cto_name", "cio_name", "chairman_name"), row)) if row else {}
+
+        # Same "never silently overwrite verified data" rule as every
+        # other field -- a column already filled stays put unless
+        # overwrite=True, even if the other 3 columns on this row do get
+        # new values this run.
+        to_write = {c: v for c, v in incoming.items() if overwrite or not existing.get(c)}
+        if not to_write:
+            return False
+
+        if row is None:
+            columns = ", ".join(to_write.keys())
+            placeholders = ", ".join(["%s"] * len(to_write))
+            cur.execute(
+                f"INSERT INTO leadership_profiles (organization_id, {columns}) VALUES (%s, {placeholders})",
+                (org_id, *to_write.values()),
+            )
+        else:
+            set_clause = ", ".join(f"{c} = %s" for c in to_write)
+            cur.execute(
+                f"UPDATE leadership_profiles SET {set_clause}, last_updated_at = now() WHERE organization_id = %s",
+                (*to_write.values(), org_id),
+            )
+        return True
 
     def _upsert_metrics(
         self, cur, org_id: str, record: dict[str, Any], table: str,

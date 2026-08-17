@@ -2,8 +2,13 @@
 field extraction across every document belonging to an entity, merges the
 best evidence into one ExtractedRecord, and publishes it to score-jobs.
 
-Every monetary field is independently sourced -- the extractor searches
-every document for each field separately and takes the first (highest
+Fields extracted: revenue, net profit, IT/data-centre/cybersecurity/cloud
+spend, digital capex, branch count, employee count, head office address,
+and leadership names (CEO/CTO/CIO/Chairman) -- see fields.py for the
+rule-based (regex/keyword) logic behind each.
+
+Every field is independently sourced -- the extractor searches every
+document for each field separately and takes the first (highest
 source-priority) document that has a usable, properly-scoped match. If no
 document has a usable match for a field, that field is written as "N/A" ;
 nothing is ever estimated or carried over from an unrelated field.
@@ -53,6 +58,15 @@ SPEND_FIELDS = [
     ("digital_capex_inr_cr", F.DIGITAL_CAPEX_KEYWORDS),
 ]
 
+# Matches leadership_profiles' 4 real columns -- see shared/models.py's
+# ExtractedRecord comment on why there's no CFO/COO here.
+LEADERSHIP_FIELDS = [
+    ("ceo_name", F.CEO_KEYWORDS),
+    ("cto_name", F.CTO_KEYWORDS),
+    ("cio_name", F.CIO_KEYWORDS),
+    ("chairman_name", F.CHAIRMAN_KEYWORDS),
+]
+
 
 def _citation_for(doc, offset: int) -> str:
     if doc.source_type == "pdf" and doc.pages:
@@ -97,6 +111,22 @@ def process_job(payload: TranslatedPayload, evlog: EventLogger) -> ExtractedReco
         citation_doc, citation_offset = doc, money.span[0]
         break
 
+    # Net profit: same global-vs-India/state scoping rule as revenue.
+    for doc in payload.documents:
+        if not doc.text:
+            continue
+        found = F.find_scoped_money(doc.text, F.NET_PROFIT_KEYWORDS, payload.state)
+        if found is None:
+            continue
+        money, scope = found
+        record.net_profit_inr_cr = str(money.value_inr_cr)
+        record.net_profit_scope = scope  # type: ignore[assignment]
+        snippets.append(money.raw_text)
+        fields_found += 1
+        if citation_doc is None:
+            citation_doc, citation_offset = doc, money.span[0]
+        break
+
     # Each spend field: independently sourced, first document that has it wins.
     for attr_name, keywords in SPEND_FIELDS:
         for doc in payload.documents:
@@ -112,7 +142,30 @@ def process_job(payload: TranslatedPayload, evlog: EventLogger) -> ExtractedReco
                 citation_doc, citation_offset = doc, match.span[0]
             break
 
-    # Vendor mentions + branch/employee counts: scan every document, union results.
+    # Leadership: same "independently sourced, first document wins" rule
+    # as the spend fields. Lower confidence than the money fields (see
+    # fields.py's module comment on find_person_near_role) but still
+    # never fabricated -- N/A stays N/A if no name-shaped match turns up
+    # near the role keyword.
+    for attr_name, keywords in LEADERSHIP_FIELDS:
+        for doc in payload.documents:
+            if not doc.text:
+                continue
+            match = F.find_person_near_role(doc.text, keywords)
+            if match is None:
+                continue
+            setattr(record, attr_name, match.raw_text)
+            snippets.append(match.raw_text)
+            fields_found += 1
+            if citation_doc is None:
+                citation_doc, citation_offset = doc, match.span[0]
+            break
+
+    # Vendor mentions + branch/employee counts + head office address: scan
+    # every document, first usable match per field wins (address
+    # shouldn't vary by document the way independently-disclosed spend
+    # figures can, so this reuses the branch/employee "keep the first
+    # found" pattern rather than the spend fields' per-document loop).
     for doc in payload.documents:
         if not doc.text:
             continue
@@ -125,6 +178,13 @@ def process_job(payload: TranslatedPayload, evlog: EventLogger) -> ExtractedReco
             ec = F.find_employee_count(doc.text)
             if ec != F.NA:
                 record.employee_count = ec
+        if record.head_office_address == F.NA:
+            addr = F.find_head_office_address(doc.text)
+            if addr is not None:
+                record.head_office_address = addr.raw_text
+                fields_found += 1
+                if citation_doc is None:
+                    citation_doc, citation_offset = doc, addr.span[0]
 
     record.mentioned_vendors = sorted(all_vendors)
 
@@ -171,7 +231,8 @@ def handle_message(msg: StreamMessage, queue: QueueClient, evlog: EventLogger) -
         queue.publish(SCORE_JOBS_STREAM, record.model_dump())
         queue.ack(EXTRACT_JOBS_STREAM, GROUP, msg.id)
         evlog.info(
-            f"extracted {payload.entity_name}: revenue={record.revenue_inr_cr} it_spend={record.it_spend_inr_cr}",
+            f"extracted {payload.entity_name}: revenue={record.revenue_inr_cr} net_profit={record.net_profit_inr_cr} "
+            f"it_spend={record.it_spend_inr_cr} ceo={record.ceo_name} head_office={record.head_office_address}",
             entity_id=payload.entity_id, entity_name=payload.entity_name,
         )
     except Exception as exc:  # noqa: BLE001 - never crash the consumer loop

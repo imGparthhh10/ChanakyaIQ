@@ -127,6 +127,8 @@ class ExtractedRecord(BaseModel):
 
     revenue_inr_cr: MoneyField = "N/A"
     revenue_scope: RevenueScope = "unknown"
+    net_profit_inr_cr: MoneyField = "N/A"
+    net_profit_scope: RevenueScope = "unknown"
     it_spend_inr_cr: MoneyField = "N/A"
     data_centre_spend_inr_cr: MoneyField = "N/A"
     cybersecurity_spend_inr_cr: MoneyField = "N/A"
@@ -135,7 +137,17 @@ class ExtractedRecord(BaseModel):
 
     branch_count: str = "N/A"
     employee_count: str = "N/A"
+    head_office_address: str = "N/A"
     mentioned_vendors: list[str] = Field(default_factory=list)
+
+    # Matches the real esds_eip_dev.leadership_profiles table's 4 columns
+    # exactly (ceo_name/cto_name/cio_name/chairman_name) -- no CFO/COO
+    # fields, since that table doesn't have them and this pipeline writes
+    # into the existing schema rather than inventing new columns.
+    ceo_name: str = "N/A"
+    cto_name: str = "N/A"
+    cio_name: str = "N/A"
+    chairman_name: str = "N/A"
 
     raw_snippet: str = "N/A"
     found_nothing: bool = False

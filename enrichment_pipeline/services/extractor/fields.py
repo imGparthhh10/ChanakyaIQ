@@ -81,6 +81,13 @@ REVENUE_KEYWORDS = [
     "total revenue", "total income", "gross revenue", "net revenue",
     "revenue from operations", "operating income", "total business",
 ]
+# Same global-vs-India/state scoping ambiguity as revenue applies here too
+# (a listed MNC's annual report routinely states both a global PAT and an
+# India-subsidiary PAT in the same paragraph) -- reuses find_scoped_money,
+# not find_spend_field, for exactly that reason.
+NET_PROFIT_KEYWORDS = [
+    "net profit", "profit after tax", "profit for the year", "net income",
+]
 IT_SPEND_KEYWORDS = [
     "it spend", "it expenditure", "technology spend", "technology investment",
     "it infrastructure investment", "software investment", "it budget",
@@ -126,6 +133,125 @@ VENDOR_KEYWORDS = [
 
 BRANCH_RE = re.compile(r"(\d{1,5})\s*(?:branches|branch network)", re.IGNORECASE)
 EMPLOYEE_RE = re.compile(r"(\d{1,6})\s*(?:employees|staff members|workforce)", re.IGNORECASE)
+
+# ------------------------------------------------------------------ #
+# Head office address
+# ------------------------------------------------------------------ #
+HEAD_OFFICE_KEYWORDS = [
+    "registered office", "registered address", "corporate office",
+    "head office", "headquartered at", "principal place of business",
+]
+_ADDRESS_LEADING_PUNCT_RE = re.compile(r"^[\s:,\-–—]+")
+_ADDRESS_STOP_RE = re.compile(r"[.\n]")
+
+
+def find_head_office_address(text: str) -> Optional[MoneyMatch]:
+    """Captures the text immediately following a head-office keyword, up to
+    the next sentence break -- reuses MoneyMatch as a generic
+    (value, raw_text, span) carrier even though there's no money involved,
+    so callers/citations work identically to every other extracted field.
+    Length-bounded (10-250 chars) as a sanity filter: too short is
+    probably a stray keyword mention with no address after it ("our
+    registered office is undergoing renovation"), too long means the stop
+    regex ran off into unrelated following text rather than an address."""
+    lower = text.lower()
+    for kw in HEAD_OFFICE_KEYWORDS:
+        idx = lower.find(kw)
+        if idx == -1:
+            continue
+        start = idx + len(kw)
+        skip = _ADDRESS_LEADING_PUNCT_RE.match(text[start:start + 10])
+        if skip:
+            start += skip.end()
+        stop = _ADDRESS_STOP_RE.search(text, start)
+        end = stop.start() if stop else min(len(text), start + 220)
+        snippet = text[start:end].strip()
+        if 10 <= len(snippet) <= 250:
+            return MoneyMatch(value_inr_cr=0.0, raw_text=snippet, span=(start, end))
+    return None
+
+
+# ------------------------------------------------------------------ #
+# Leadership (name-near-role-title extraction)
+# ------------------------------------------------------------------ #
+# Rule-based name extraction is inherently less reliable than the money
+# regexes above -- there's no NER model in this pipeline by design (see
+# the module docstring: every value must trace to literal source text, no
+# LLM). This stays deliberately conservative: a tight window around the
+# role keyword, a name-shaped token pattern, and a blocklist of common
+# capitalized non-name phrases that turn up near these keywords in real
+# annual reports (section headings, boilerplate). Callers get the raw
+# snippet too, so a wrong extraction is always human-checkable, same
+# guarantee every other field in this module makes.
+CEO_KEYWORDS = ["chief executive officer", "managing director & ceo", "managing director and ceo", "ceo"]
+CTO_KEYWORDS = ["chief technology officer", "cto"]
+CIO_KEYWORDS = ["chief information officer", "cio"]
+CHAIRMAN_KEYWORDS = ["chairman", "chairperson"]
+
+_TITLE_PREFIX = r"(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Shri|Smt\.?)\s+"
+_NAME_TOKEN = r"[A-Z][a-zA-Z'.-]{1,20}"
+# 2-4 capitalized tokens, optionally preceded by a courtesy title -- the
+# title makes a match far more trustworthy, so find_person_near_role()
+# tries a title-anchored pattern first and only falls back to a bare
+# capitalized-sequence pattern (higher false-positive risk) if that fails.
+_NAME_WITH_TITLE_RE = re.compile(rf"{_TITLE_PREFIX}({_NAME_TOKEN}(?:\s+{_NAME_TOKEN}){{1,3}})")
+_NAME_BARE_RE = re.compile(rf"({_NAME_TOKEN}(?:\s+{_NAME_TOKEN}){{1,3}})")
+
+_NAME_BLOCKLIST_WORDS = {
+    "annual", "report", "board", "directors", "company", "companies", "limited",
+    "private", "corporate", "office", "officer", "committee", "meeting", "general",
+    "financial", "statement", "statements", "management", "discussion", "analysis",
+    "notice", "notes", "accounts", "india", "indian", "group", "holdings", "bank",
+    "chief", "executive", "technology", "information", "chairman", "chairperson",
+    "managing", "director", "governance", "corporate", "sustainability", "review",
+}
+
+
+def _looks_like_a_name(candidate: str) -> bool:
+    words = candidate.split()
+    if not (2 <= len(words) <= 4):
+        return False
+    lowered = {w.lower().strip(".,") for w in words}
+    if lowered & _NAME_BLOCKLIST_WORDS:
+        return False
+    return all(w[0].isupper() for w in words)
+
+
+def find_person_near_role(text: str, role_keywords: list[str], window: int = 100) -> Optional[MoneyMatch]:
+    """Looks both before and after each role-keyword occurrence (name
+    precedes the title in "John Doe, Chief Executive Officer, said..." but
+    follows it in "Chief Executive Officer Mr. John Doe"), preferring a
+    courtesy-title-anchored match over a bare capitalized-sequence match
+    at the same distance since the title is a much stronger name signal."""
+    lower_text = text.lower()
+    best: Optional[MoneyMatch] = None
+    best_score = None  # (has_title=0 sorts before 1, then distance)
+
+    for kw in role_keywords:
+        # \b word boundaries -- matters most for the short abbreviations
+        # ("ceo"/"cto"/"cio"), which would otherwise match as a bare
+        # substring inside an unrelated longer word.
+        for kw_match in re.finditer(rf"\b{re.escape(kw)}\b", lower_text):
+            k_start, k_end = kw_match.start(), kw_match.end()
+            seg_start = max(0, k_start - window)
+            seg_end = min(len(text), k_end + window)
+            segment = text[seg_start:seg_end]
+
+            candidates: list[tuple[str, int, int, bool]] = []  # (name, start, end, has_title)
+            for m in _NAME_WITH_TITLE_RE.finditer(segment):
+                candidates.append((m.group(1), seg_start + m.start(1), seg_start + m.end(1), True))
+            for m in _NAME_BARE_RE.finditer(segment):
+                candidates.append((m.group(1), seg_start + m.start(1), seg_start + m.end(1), False))
+
+            for name, n_start, n_end, has_title in candidates:
+                if not _looks_like_a_name(name):
+                    continue
+                distance = min(abs(n_start - k_end), abs(k_start - n_end))
+                score = (0 if has_title else 1, distance)
+                if best_score is None or score < best_score:
+                    best_score = score
+                    best = MoneyMatch(value_inr_cr=0.0, raw_text=name.strip(), span=(n_start, n_end))
+    return best
 
 
 def _nearest_marker_scope(text: str, center: int, state_lower: str, window: int = 200) -> str:
