@@ -1,0 +1,10 @@
+{
+  // Prisma migration .sql files are generated PostgreSQL DDL, already
+  // verified against real Postgres (local + Neon) -- not meant to be
+  // hand-linted. Without this, VS Code's default SQL validator checks
+  // them against T-SQL syntax and flags valid Postgres-only syntax
+  // (CREATE TYPE ... AS ENUM, quoted schema-qualified names) as errors.
+  "files.associations": {
+    "**/prisma/migrations/**/*.sql": "plaintext"
+  }
+}

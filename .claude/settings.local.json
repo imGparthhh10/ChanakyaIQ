@@ -197,7 +197,10 @@
       "Bash(python -c \"import docx; print\\(docx.__file__\\)\")",
       "Bash(python -c \"print\\(open\\('table_dump.txt', encoding='utf-8'\\).read\\(\\)\\)\")",
       "Bash(start \"\" \"c:\\\\Users\\\\Parth.ghongane\\\\OneDrive - ESDS Software Solution Limited\\\\Desktop\\\\ESDS Dashbord\\\\docs\\\\ChanakyaIQ_Concept_Note.docx\")",
-      "PowerShell(Get-Process WINWORD -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-Process WINWORD -ErrorAction SilentlyContinue)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" npx prisma migrate deploy)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" npx prisma migrate resolve --rolled-back 0_init)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" node neon_smoke_test.js)"
     ]
   }
 }
