@@ -200,7 +200,10 @@
       "PowerShell(Get-Process WINWORD -ErrorAction SilentlyContinue)",
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" npx prisma migrate deploy)",
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" npx prisma migrate resolve --rolled-back 0_init)",
-      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" node neon_smoke_test.js)"
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_VTIo8Q9Cebfj@ep-steep-bird-axacx1w9.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require\" node neon_smoke_test.js)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://api.github.com/repos/imGparthhh10/ChanakyaIQ)"
     ]
   }
 }
