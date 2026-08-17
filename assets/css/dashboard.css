@@ -164,10 +164,42 @@
   font-style: italic;
   color: var(--indigo-light);
 }
+.login-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  padding: 4px;
+  border-radius: var(--r-lg);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border, rgba(148,163,184,0.10));
+  margin-bottom: var(--sp-4);
+}
+.login-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth);
+}
+.login-tab:hover { color: var(--text-primary); }
+.login-tab.active {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
 .login-form {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+}
+.login-form[hidden] { display: none; }
+.ef-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 4px;
 }
 .login-error {
   font-size: var(--fs-sm);

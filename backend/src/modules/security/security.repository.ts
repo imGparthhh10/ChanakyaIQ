@@ -7,6 +7,10 @@ export class SecurityRepository {
     return prisma.user.findUnique({ where: { email }, include: { role: true } });
   }
 
+  createUser(fullName: string, email: string, passwordHash: string, roleId: number) {
+    return prisma.user.create({ data: { fullName, email, passwordHash, roleId } });
+  }
+
   listRoles() {
     return prisma.role.findMany({ include: { rolePermissions: { include: { permission: true } } } });
   }

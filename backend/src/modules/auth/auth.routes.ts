@@ -63,6 +63,50 @@ authRoutes.post('/login', async (req, res, next) => {
   }
 });
 
+const RegisterSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
+  adminPassword: z.string().min(1),
+});
+
+// New accounts are gated behind the primary admin's (SEED_ADMIN_EMAIL)
+// current password rather than being open self-signup — this app has no
+// invite/approval flow, so the admin password stands in for one. Not
+// user enumeration-safe like /login's error (this is an authorization
+// gate the caller is expected to know, not a login guess), so it's fine
+// to say specifically which check failed.
+authRoutes.post('/register', async (req, res, next) => {
+  try {
+    const { fullName, email, password, adminPassword } = RegisterSchema.parse(req.body);
+
+    if (!env.SEED_ADMIN_EMAIL) throw new ApiError(500, 'Admin account not configured on this server');
+    const admin = await security.findUserByEmail(env.SEED_ADMIN_EMAIL);
+    if (!admin) throw new ApiError(500, 'Admin account not configured on this server');
+
+    const adminValid = await bcrypt.compare(adminPassword, admin.passwordHash);
+    if (!adminValid) throw new ApiError(401, 'Incorrect admin password');
+
+    const existing = await security.findUserByEmail(email);
+    if (existing) throw new ApiError(409, 'An account with this email already exists');
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await security.createUser(fullName, email, passwordHash, admin.roleId);
+
+    const jti = randomUUID();
+    const expiresAt = expiresInToDate(env.JWT_EXPIRES_IN);
+    const token = jwt.sign({ sub: user.userId, jti }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN as any });
+    await security.createSession(user.userId, jti, expiresAt, req.ip ?? null);
+
+    res.status(201).json({
+      token,
+      user: { id: user.userId, name: user.fullName, role: admin.role.roleName, initials: initialsOf(user.fullName) },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 authRoutes.post('/logout', requireAuth, async (req, res, next) => {
   try {
     const header = req.headers.authorization!; // requireAuth already validated this exists

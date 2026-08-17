@@ -103,6 +103,22 @@ export async function login(email, password) {
   return body.user;
 }
 
+/** @returns {Promise<{name:string, role:string, initials:string}>} */
+export async function register(fullName, email, password, adminPassword) {
+  const resp = await fetchWithRetry(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fullName, email, password, adminPassword }),
+  });
+  const body = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(body.error || `Registration failed (HTTP ${resp.status})`);
+  }
+  setToken(body.token);
+  setCachedUser(body.user);
+  return body.user;
+}
+
 export async function logout() {
   try {
     await authFetch(`${API_BASE}/auth/logout`, { method: 'POST' });
