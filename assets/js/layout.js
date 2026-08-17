@@ -9,7 +9,6 @@ import { bus }     from './utils/eventBus.js';
 import { sidebar } from './components/sidebar.js';
 import { navbar }  from './components/navbar.js';
 import { drawer }  from './components/drawer.js';
-import { footer }  from './components/footer.js';
 
 const SIDEBAR_KEY = 'esds.sidebar';
 
@@ -28,7 +27,6 @@ export const layout = {
     sidebar.mount(qs('#sidebar-root'));
     navbar.mount(qs('#navbar-root'));
     drawer.mount(qs('#drawer-root'));
-    footer.mount(qs('#footer-root'));
 
     // Restore sidebar collapse preference.
     const stored = readSidebarState();

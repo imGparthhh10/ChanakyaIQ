@@ -24,7 +24,6 @@ import { initCompare }         from './compare/compare.js';
 import { initExport }          from './export/export.js';
 import { initRouter, registerRoute, currentPath } from './router.js';
 import { initCommandPalette }  from './commandPalette.js';
-import { initBranding }        from './components/branding.js';
 import { mountHome }           from './pages/home.js';
 import { mountLogin }          from './pages/login.js';
 import { me as fetchMe }       from './data/authClient.js';
@@ -201,7 +200,6 @@ async function boot() {
   initCompare();
   initExport();
   initCommandPalette();
-  initBranding();
   wireHeaderActions();
 
   initRouter();
