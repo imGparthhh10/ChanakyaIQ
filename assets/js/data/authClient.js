@@ -19,7 +19,7 @@ let _cachedUser = null; // set by login()/me(), read by sidebar.js
 // sidebar.js's user block is mounted (via layout.init()) before the auth
 // check in dashboard.js's boot() resolves, so it can't just read
 // _cachedUser once at render time — it listens for this event instead,
-// same pattern as the app's existing identity:change/data:ready events.
+// same emit-on-change pattern the app's data:ready event already uses.
 function setCachedUser(user) {
   _cachedUser = user;
   bus.emit('auth:change', { user });

@@ -56,7 +56,7 @@ authRoutes.post('/login', async (req, res, next) => {
 
     res.json({
       token,
-      user: { name: user.fullName, role: user.role.roleName, initials: initialsOf(user.fullName) },
+      user: { id: user.userId, name: user.fullName, role: user.role.roleName, initials: initialsOf(user.fullName) },
     });
   } catch (err) {
     next(err);
@@ -77,5 +77,5 @@ authRoutes.post('/logout', requireAuth, async (req, res, next) => {
 
 authRoutes.get('/me', requireAuth, (req, res) => {
   const user = req.user!; // requireAuth guarantees this is set
-  res.json({ name: user.fullName, role: user.role, initials: initialsOf(user.fullName) });
+  res.json({ id: user.userId, name: user.fullName, role: user.role, initials: initialsOf(user.fullName) });
 });

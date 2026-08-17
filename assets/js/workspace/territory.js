@@ -3,10 +3,13 @@
  *
  * Maps { companyKey → userId }. Backed by localStorage; every read
  * and write emits a bus event so the sidebar's "My Book (N)" counter
- * and the My Territory table stay in sync.
+ * and the My Territory table stay in sync. userId is the real logged-in
+ * account's id (authClient.js) — this used to key off a fake, no-backend
+ * persona roster, removed once real auth existed.
  *
- * Assignment rules ("all NBFC in West → Priya") are deliberately NOT
- * implemented as auto-rules yet — they'd need a UI to author. For now:
+ * Assignment rules (auto-assign by sector/region) are deliberately NOT
+ * implemented — they'd need a UI to author, and a real multi-user system
+ * to assign *to*. For now:
  *   - Manual assign from Company 360 header
  *   - Bulk assign from Lists page ("Assign selected to Me")
  *   - "Assign to Me" one-click on any company
@@ -14,7 +17,7 @@
 
 import { bus }              from '../utils/eventBus.js';
 import { safeParseJSON }    from '../utils/sanitize.js';
-import { identity }         from './identity.js';
+import { currentUser }      from '../data/authClient.js';
 
 const KEY = 'boip.territory.v1';
 
@@ -44,7 +47,7 @@ export const territory = {
 
   /** Convenience: assign to the current user. */
   assignToMe(companyKey) {
-    const u = identity.current();
+    const u = currentUser();
     if (u) this.assign(companyKey, u.id);
   },
 
@@ -57,7 +60,7 @@ export const territory = {
 
   /** All company records owned by the current user, resolved via cache. */
   myBook(cache) {
-    const u = identity.current();
+    const u = currentUser();
     if (!u || !cache) return [];
     const keys = new Set(this.keysOf(u.id));
     return cache.getAll().filter(r => keys.has(r._dedupeKey));

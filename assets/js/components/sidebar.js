@@ -112,11 +112,10 @@ function render() {
   ]);
 }
 
-// Shows the real logged-in user (authClient.js) — not identity.js's fake
-// roster, which stays in use everywhere else (territory ownership, notes
-// authorship, Digest/Homepage greetings) as a separate, pre-existing
-// "workspace persona" feature unrelated to real login. The dropdown's
-// only action is logging out, replacing the old "switch fake user" list.
+// Shows the real logged-in user (authClient.js). The dropdown's only
+// action is logging out, replacing the old "switch fake user" list --
+// the fake persona roster this used to source from (identity.js) has
+// been removed everywhere, not just here.
 function renderUserSwitcher() {
   const user = currentUser();
   const wrap = h('div', { class: 'sidebar-foot user-switcher', id: 'sw-user-switcher' });

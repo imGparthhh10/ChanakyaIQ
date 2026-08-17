@@ -41,7 +41,6 @@ import { mountWhitespace }     from './pages/whitespace.js';
 import { mountSector }         from './pages/sector.js';
 import { mountSectorsIndex }   from './pages/sectorsIndex.js';
 import { mountDigest }         from './pages/digest.js';
-import { identity }            from './workspace/identity.js';
 import { territory }           from './workspace/territory.js';
 import { installScoreHistory, delta } from './workspace/scoreHistory.js';
 import { hasSignal }           from './workspace/signals.js';
@@ -182,7 +181,7 @@ async function boot() {
   // ─── Workspace resolvers — must run before filters init ───
   DataCache.registerFilterResolvers({
     ownerOf:       (key) => territory.ownerOf(key),
-    currentUserId: () => identity.current()?.id || null,
+    currentUserId: () => user?.id || null,
     delta:         (key) => delta(key),
     hasSignal:     (rec, type) => hasSignal(rec, type),
   });

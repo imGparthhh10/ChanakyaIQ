@@ -23,7 +23,7 @@ import { Icon }                      from '../components/icons.js';
 import { dataEngine }                from '../data/data.js';
 import { workspace }                 from '../workspace/store.js';
 import { territory }                 from '../workspace/territory.js';
-import { identity }                  from '../workspace/identity.js';
+import { currentUser }               from '../data/authClient.js';
 import { opportunityValue, scoreTier, confidenceScore } from '../workspace/scoring.js';
 import { topMovers }                 from '../workspace/scoreHistory.js';
 import { deriveSignalTypes }         from '../workspace/signals.js';
@@ -339,7 +339,7 @@ function miniHealthTile(label, valueText, pct, hint) {
 
 export async function mountExecutive(container) {
   const cache = dataEngine.cache;
-  const user = identity.current();
+  const user = currentUser(); // real logged-in user — title only, see mountExecutive() below
 
   if (!cache) {
     container.innerHTML = `<div class="page-container"><section class="glass-panel"><p style="padding:var(--sp-6);text-align:center;color:var(--text-muted)">Waiting for data engine…</p></section></div>`;
@@ -375,8 +375,9 @@ export async function mountExecutive(container) {
   const cleanup = new CleanupRegistry();
   cleanup.addListener(qs('#exec-export', container), 'click', () => bus.emit('export:open'));
 
-  // Re-render on identity swap
-  cleanup.add(bus.on('identity:change', () => mountExecutive(container)));
+  // Re-render when the logged-in user changes (login/logout) so the title
+  // never shows a stale name.
+  cleanup.add(bus.on('auth:change', () => mountExecutive(container)));
   cleanup.add(bus.on('territory:change', () => {
     // Cheap: coverage tile only. Full re-render for simplicity.
     mountExecutive(container);

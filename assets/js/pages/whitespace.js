@@ -26,7 +26,7 @@ import { dataEngine }               from '../data/data.js';
 import { tierBadgeHtml }            from '../utils/icpBadge.js';
 import { workspace }                from '../workspace/store.js';
 import { territory }                from '../workspace/territory.js';
-import { identity }                 from '../workspace/identity.js';
+import { currentUser }              from '../data/authClient.js';
 import { opportunityValue, scoreTier } from '../workspace/scoring.js';
 
 function svgIcon(name) {
@@ -202,7 +202,7 @@ function render(container, opts) {
   if (bulk) {
     cleanup.addListener(bulk, 'click', () => {
       const top10 = items.slice(0, 10).map(it => it.rec._dedupeKey);
-      const uid   = identity.current()?.id;
+      const uid   = currentUser()?.id;
       if (!uid) return;
       territory.bulkAssign(top10, uid);
       announce(`Assigned top ${top10.length} to your book.`, 'polite');
@@ -212,7 +212,7 @@ function render(container, opts) {
 
   cleanup.add(bus.on('territory:change', () => render(container, opts)));
   cleanup.add(bus.on('workspace:status:change', () => render(container, opts)));
-  cleanup.add(bus.on('identity:change', () => render(container, opts)));
+  cleanup.add(bus.on('auth:change', () => render(container, opts)));
 
   return () => cleanup.dispose();
 }

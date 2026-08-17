@@ -3,10 +3,12 @@
  *
  * URL: #/digest
  *
- * Greeting/avatar are the real logged-in user (authClient.currentUser()).
- * Everything else is personalized to identity.current() — a separate,
- * pre-existing "workspace persona" system (territory ownership, notes
- * authorship) that predates real auth and isn't part of it:
+ * Everything on this page — greeting/avatar and "my book" (territory
+ * ownership) alike — is scoped to the real logged-in user
+ * (authClient.currentUser()). There used to be a separate fake persona
+ * system driving territory ownership independently of who was actually
+ * logged in; that's gone, and territory.js now keys off the same real
+ * account this page's greeting does.
  *   ┌ Greeting + week summary                          ┐
  *   ├ Score movers in MY book (up + down)              ┤
  *   ├ Top 5 accounts to action this week (owned only)  ┤
@@ -47,11 +49,8 @@ function fmt(n) {
 
 // ─── Sections ─────────────────────────────────────
 
-// `user` here is the real logged-in account (authClient.currentUser()) —
-// greeting/avatar only. `myBook` below is still scoped to
-// identity.current()'s persona (territory.myBook() reads that internally,
-// unrelated to who's actually logged in) — a pre-existing, separate
-// feature this greeting fix doesn't touch.
+// `user` and `myBook` (via territory.myBook()) both resolve to the same
+// real logged-in account now — see the file header comment.
 function renderHero(user, myBook) {
   const summary = workspace.summary();
   return `
@@ -232,7 +231,7 @@ export async function mountDigest(container) {
   cleanup.addListener(qs('#digest-print', container), 'click', () => {
     window.print();
   });
-  cleanup.add(bus.on('identity:change', () => mountDigest(container)));
+  cleanup.add(bus.on('auth:change', () => mountDigest(container)));
   cleanup.add(bus.on('territory:change', () => mountDigest(container)));
 
   return () => cleanup.dispose();

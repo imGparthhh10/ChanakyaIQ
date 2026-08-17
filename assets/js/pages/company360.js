@@ -29,7 +29,7 @@ import { recommendForCompany }     from '../recommendations/engine.js';
 import { opportunityValue }        from '../workspace/scoring.js';
 import { workspace }               from '../workspace/store.js';
 import { territory }               from '../workspace/territory.js';
-import { identity }                from '../workspace/identity.js';
+import { currentUser }             from '../data/authClient.js';
 import { dataEngine, API_BASE }    from '../data/data.js';
 import { authFetch }               from '../data/authClient.js';
 import { navigate }                from '../router.js';
@@ -106,18 +106,20 @@ function freshnessMeta(rec) {
 
 function renderOwnerButton(rec) {
   const uid = territory.ownerOf(rec._dedupeKey);
-  const me = identity.current();
+  const me = currentUser();
   if (!uid) {
     return `<button class="btn btn-ghost btn-sm" data-action="assign-me">${svgIcon('user')} Assign to me</button>`;
   }
-  const owner = identity.user(uid);
-  if (owner && me && owner.id === me.id) {
+  if (me && uid === me.id) {
     return `<button class="btn btn-ghost btn-sm c360-owner-me" data-action="unassign" title="Assigned to you — click to unassign">
       ${svgIcon('user')} Mine <span class="c360-owner-x">✕</span>
     </button>`;
   }
-  return `<button class="btn btn-ghost btn-sm c360-owner-other" data-action="reassign" title="Owned by ${escapeHTML(owner?.name || 'someone else')}">
-    ${svgIcon('user')} ${escapeHTML(owner?.initials || '?')}
+  // No user directory to resolve an arbitrary owner id to a name/initials
+  // (that used to come from the fake persona roster) -- show an honest
+  // generic label rather than fabricate one.
+  return `<button class="btn btn-ghost btn-sm c360-owner-other" data-action="reassign" title="Owned by another user">
+    ${svgIcon('user')} Assigned
   </button>`;
 }
 

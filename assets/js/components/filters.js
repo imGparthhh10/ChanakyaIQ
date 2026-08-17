@@ -12,7 +12,6 @@ import { Icon }        from './icons.js';
 import { PRODUCT_LIST } from '../recommendations/products.js';
 import { sanitizeSearch, safeParseJSON, sanitizeFilename } from '../utils/sanitize.js';
 import { announce } from '../utils/a11y.js';
-import { identity } from '../workspace/identity.js';
 import { dataEngine } from '../data/data.js';
 
 // Cache district options so we don't re-scan branches on every render
@@ -184,12 +183,12 @@ let _activeCount = 0;
 // ─── Filter Definitions ──────────────────────────
 
 function ownerOptions() {
-  // Special sentinels + roster names
-  const roster = identity.roster();
+  // Just the two real, meaningful states -- there's no user directory to
+  // offer a roster of specific people to filter by (see territory.js's
+  // header comment on why "assign to a named person" isn't a thing yet).
   return [
     { value: 'me',         label: '● My accounts' },
     { value: 'unassigned', label: '○ Unassigned' },
-    ...roster.map(u => ({ value: u.id, label: u.name })),
   ];
 }
 

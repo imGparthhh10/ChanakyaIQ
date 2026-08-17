@@ -3,9 +3,10 @@
  *
  * URL: #/my-territory
  *
- * Auto-filtered to accounts assigned to identity.current(). Not a
- * static filter — reflects any territory assignments made from
- * Company 360 or bulk actions in real time via `territory:change`.
+ * Auto-filtered to accounts assigned to the real logged-in user
+ * (authClient.currentUser()). Not a static filter — reflects any
+ * territory assignments made from Company 360 or bulk actions in real
+ * time via `territory:change`.
  *
  * Layout:
  *   ┌ Header: My Book · <N> accounts · Pipeline TAM · Hot leads ┐
@@ -22,7 +23,7 @@ import { Icon }                      from '../components/icons.js';
 import { dataEngine }                from '../data/data.js';
 import { workspace }                 from '../workspace/store.js';
 import { territory }                 from '../workspace/territory.js';
-import { identity }                  from '../workspace/identity.js';
+import { currentUser }               from '../data/authClient.js';
 import { tierBadgeHtml }             from '../utils/icpBadge.js';
 import { opportunityValue, scoreTier } from '../workspace/scoring.js';
 import { deriveSignalTypes }         from '../workspace/signals.js';
@@ -77,7 +78,7 @@ function summarize(records) {
 
 function render(container) {
   const cache = dataEngine.cache;
-  const user  = identity.current();
+  const user  = currentUser();
 
   if (!user) {
     container.innerHTML = `<div class="page-container"><section class="glass-panel">No active user selected.</section></div>`;
@@ -158,7 +159,7 @@ function render(container) {
 
   // Re-render on any change that affects book membership
   cleanup.add(bus.on('territory:change', () => render(container)));
-  cleanup.add(bus.on('identity:change',  () => render(container)));
+  cleanup.add(bus.on('auth:change',  () => render(container)));
   cleanup.add(bus.on('workspace:status:change', () => render(container)));
 
   return () => cleanup.dispose();
